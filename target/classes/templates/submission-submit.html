@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сдача задания</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+</head>
+<body>
+<div th:replace="fragments/navbar"></div>
+
+    <main class="container">
+        <h1>Сдача задания</h1>
+
+        <!-- Информация о задании -->
+        <article class="card" th:object="${assignment}">
+            <header>
+                <h2 th:text="*{title}">Название задания</h2>
+            </header>
+            <p><strong>Дедлайн:</strong> <span th:text="*{deadline}">дата</span></p>
+            <p th:if="*{description}"><strong>Описание:</strong> <span th:text="*{description}">описание</span></p>
+            <p th:if="*{criteria}"><strong>Критерии оценки:</strong> <span th:text="*{criteria}">критерии</span></p>
+        </article>
+
+        <!-- Форма сдачи -->
+        <form th:action="@{/submissions/submit/{id}(id=${assignment.id})}"
+              th:method="post"
+              th:object="${submissionModel}">
+            
+            <label for="solutionText">
+                Решение задания *
+                <textarea id="solutionText" 
+                          th:field="*{solutionText}"
+                          placeholder="Опишите ваше решение задания..."
+                          rows="10"
+                          required></textarea>
+            </label>
+
+            <label for="comment">
+                Комментарий (необязательно)
+                <textarea id="comment" 
+                          th:field="*{comment}"
+                          placeholder="Дополнительные комментарии к решению..."
+                          rows="3"></textarea>
+            </label>
+
+            <label for="attachment">
+                Прикрепленный файл
+                <input type="file" 
+                       id="attachment" 
+                       th:field="*{attachment}"
+                       accept=".pdf,.doc,.docx,.txt,.zip">
+                <small>Поддерживаемые форматы: PDF, DOC, DOCX, TXT, ZIP (макс. 10MB)</small>
+            </label>
+
+            <div class="grid">
+                <button type="submit" class="primary">Сдать задание</button>
+                <a th:href="@{/assignments/my}" role="button" class="secondary">Отмена</a>
+            </div>
+        </form>
+    </main>
+</body>
+</html>

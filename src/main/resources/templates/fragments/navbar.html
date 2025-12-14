@@ -1,0 +1,68 @@
+<nav class="container-fluid" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" xmlns:th="http://www.thymeleaf.org">
+    <!--    <ul>-->
+    <!--        <li><strong>TaskManager</strong></li>-->
+    <!--    </ul>-->
+    <!--    <ul>-->
+    <!--        <li><a th:href="@{/}" class="contrast">Главная</a></li>-->
+    <!--        <li><a th:href="@{/assignments/all}" class="contrast">Все задания</a></li>-->
+    <!--        <li sec:authorize="hasAnyAuthority('STUDENT', 'TEACHER', 'ADMIN')">-->
+    <!--            <a th:href="@{/assignments/my}" class="contrast">Мои задания</a>-->
+    <!--        </li>-->
+    <!--        <li sec:authorize="isAuthenticated()">-->
+    <!--            <a th:href="@{/profile}" class="contrast">Профиль</a>-->
+    <!--        </li>-->
+    <!--        <li sec:authorize="!isAuthenticated()">-->
+    <!--            <a th:href="@{/login}" role="button">Войти</a>-->
+    <!--        </li>-->
+    <!--        <li sec:authorize="isAuthenticated()">-->
+    <!--            <form th:action="@{/logout}" method="post" style="display: inline;">-->
+    <!--                <button type="submit" class="contrast">Выйти</button>-->
+    <!--            </form>-->
+    <!--        </li>-->
+    <!--    </ul>-->
+    <!--</nav>-->
+    <ul>
+            <li><strong>📚 TaskManager</strong></li>
+        </ul>
+        <ul>
+            <li><a th:href="@{/}" class="contrast">🏠 Главная</a></li>
+            <li sec:authorize="hasAnyAuthority('ROLE_ADMIN')">
+                <a th:href="@{/assignments/all}" class="contrast">📋 Все задания</a>
+            </li>
+
+            <!-- Мои задания - только для авторизованных -->
+            <li sec:authorize="hasAnyAuthority('ROLE_STUDENT', 'ROLE_TEACHER')">
+                <a th:href="@{/assignments/my}" class="contrast">📖 Мои задания</a>
+            </li>
+
+            <!-- Создать задание - только для преподавателей и админов -->
+            <li sec:authorize="hasAnyAuthority('ROLE_TEACHER')">
+                <a th:href="@{/assignments/add}" class="contrast">➕ Создать задание</a>
+            </li>
+
+            <!-- Профиль - только для авторизованных -->
+            <li sec:authorize="isAuthenticated()">
+                <a th:href="@{/profile}" class="contrast">👤 Профиль</a>
+            </li>
+
+            <!-- Админ-панель - только для админов и преподавателей -->
+            <li sec:authorize="hasAnyAuthority('ROLE_ADMIN')">
+                <a th:href="@{/admin/dashboard}" class="contrast">⚙️ Панель управления</a>
+            </li>
+
+            <!-- Кнопки входа/выхода -->
+            <li sec:authorize="!isAuthenticated()">
+                <a th:href="@{/login}" role="button" class="primary">🔑 Войти</a>
+            </li>
+            <li sec:authorize="isAuthenticated()">
+                <div class="user-info-small">
+                    <small>Вы вошли как: <strong sec:authentication="name"></strong></small>
+                </div>
+            </li>
+            <li sec:authorize="isAuthenticated()">
+                <form th:action="@{/logout}" method="post" style="display: inline;">
+                    <button type="submit" class="secondary">🚪 Выйти</button>
+                </form>
+            </li>
+        </ul>
+    </nav>

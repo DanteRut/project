@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ru"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой профиль</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <style>
+        .role-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 1rem;
+            margin: 0.25rem;
+        }
+        .badge-teacher { background: #4caf50; color: white; }
+        .badge-student { background: #2196f3; color: white; }
+        .badge-admin { background: #f44336; color: white; }
+    </style>
+</head>
+<body>
+
+<div th:replace="fragments/navbar"></div>
+
+<main class="container">
+    <h1>Мой профиль</h1>
+
+    <div th:if="${errorMessage != null}" class="alert alert-error">
+        <span th:text="${errorMessage}"></span>
+    </div>
+
+    <!-- Проверка аутентификации -->
+    <div sec:authorize="isAuthenticated()">
+        <!-- Получение информации о пользователе -->
+
+        <div th:if="${user != null}">
+            <article class="card" th:object="${user}">
+                <div class="grid">
+                    <div>
+                        <h2 th:text="*{fullName} ?: 'Не указано'">Имя пользователя</h2>
+                        <p><strong>Логин:</strong> <span th:text="*{username} ?: 'Не указан'">username</span></p>
+                        <p><strong>Email:</strong> <span th:text="*{email} ?: 'Не указан'">email</span></p>
+                        <p><strong>Роль:</strong>
+<!--                            <span class="role-badge badge-student" th:text="*{role} ?: 'Не определена'">роль</span>-->
+                            <span sec:authorize="hasAnyAuthority('ROLE_STUDENT')" class="role-badge badge-student">🎓 Студент</span>
+                            <span sec:authorize="hasAnyAuthority('ROLE_TEACHER')" class="role-badge badge-teacher">👨‍🏫 Преподаватель</span>
+                            <span sec:authorize="hasAnyAuthority('ROLE_ADMIN')" class="role-badge badge-admin">⚙️ Администратор</span>
+                        </p>
+                        <p th:if="*{registrationDate != null}">
+                            <strong>Дата регистрации:</strong>
+                            <span th:text="*{registrationDate}">дата</span>
+                        </p>
+                    </div>
+                    <div style="text-align: center;">
+                        <img src="/images/profile.png"
+                             alt="Профиль"
+                             style="width: 150px; height: 150px; border-radius: 50%; background: #f0f0f0;"
+                             onerror="this.style.display='none'">
+                        <!-- Отображение роли с использованием Spring Security -->
+                        <div sec:authorize="hasAuthority('TEACHER')" class="badge primary">Преподаватель</div>
+                        <div sec:authorize="hasAuthority('STUDENT')" class="badge secondary">Студент</div>
+                        <div sec:authorize="hasAuthority('ADMIN')" class="badge contrast">Администратор</div>
+                    </div>
+                </div>
+
+                <footer class="grid">
+                    <a th:href="@{/assignments/all}" role="button" class="secondary">К заданиям</a>
+
+                    <!-- Ссылки в зависимости от роли -->
+                    <a th:href="@{/submissions/grades}"
+                       role="button"
+                       sec:authorize="hasAuthority('STUDENT')">
+                        Мои оценки
+                    </a>
+
+                    <a th:href="@{/assignments/add}"
+                       role="button"
+                       sec:authorize="hasAnyAuthority('TEACHER', 'ADMIN')">
+                        Создать задание
+                    </a>
+
+                    <a th:href="@{/admin/dashboard}"
+                       role="button"
+                       sec:authorize="hasAnyAuthority('TEACHER', 'ADMIN')">
+                        Панель управления
+                    </a>
+
+                    <!-- Специальные ссылки для администраторов -->
+                    <a th:href="@{/admin/users}"
+                       role="button"
+                       sec:authorize="hasAuthority('ADMIN')"
+                       class="contrast">
+                        Управление пользователями
+                    </a>
+                </footer>
+            </article>
+        </div>
+
+        <div th:if="${user == null}" class="text-center">
+            <article>
+                <h4>Профиль не найден</h4>
+                <p>Не удалось загрузить информацию о профиле.</p>
+                <a th:href="@{/}" role="button">Вернуться на главную</a>
+            </article>
+        </div>
+    </div>
+
+    <!-- Если пользователь не аутентифицирован -->
+    <div sec:authorize="!isAuthenticated()" class="text-center">
+        <article>
+            <h4>Доступ запрещен</h4>
+            <p>Для просмотра профиля необходимо войти в систему.</p>
+            <a th:href="@{/login}" role="button">Войти</a>
+            <a th:href="@{/register}" role="button" class="secondary">Зарегистрироваться</a>
+        </article>
+    </div>
+</main>
+</body>
+</html>

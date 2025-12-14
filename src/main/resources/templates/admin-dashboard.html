@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель администратора</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <style>
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        .stat-card {
+            text-align: center;
+            padding: 1.5rem;
+            border: 1px solid #e1e1e1;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div th:replace="fragments/navbar"></div>
+
+    <main class="container">
+        <h1>Панель администратора</h1>
+
+        <!-- Статистика -->
+        <div class="stats-grid">
+            <article class="stat-card">
+                <h3>150</h3>
+                <p>Всего пользователей</p>
+            </article>
+            <article class="stat-card">
+                <h3>45</h3>
+                <p>Активных заданий</p>
+            </article>
+            <article class="stat-card">
+                <h3>89%</h3>
+                <p>Успеваемость</p>
+            </article>
+            <article class="stat-card">
+                <h3>12</h3>
+                <p>Новых сдач</p>
+            </article>
+        </div>
+
+        <!-- Быстрые действия -->
+        <div class="grid">
+            <article class="card">
+                <header>
+                    <h3>Управление пользователями</h3>
+                </header>
+                <p>Добавление, редактирование и удаление пользователей системы</p>
+                <footer>
+                    <a th:href="@{/admin/users}" role="button">Перейти</a>
+                </footer>
+            </article>
+
+            <article class="card">
+                <header>
+                    <h3>Статистика системы</h3>
+                </header>
+                <p>Просмотр аналитики и отчетов по успеваемости</p>
+                <footer>
+                    <a th:href="@{/admin/statistics}" role="button">Перейти</a>
+                </footer>
+            </article>
+
+            <article class="card">
+                <header>
+                    <h3>Все задания</h3>
+                </header>
+                <p>Просмотр и управление всеми заданиями в системе</p>
+                <footer>
+                    <a th:href="@{/assignments/all}" role="button">Перейти</a>
+                </footer>
+            </article>
+        </div>
+
+        <!-- Последние действия -->
+        <article class="card">
+            <header>
+                <h3>Последние действия</h3>
+            </header>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th>Пользователь</th>
+                        <th>Действие</th>
+                        <th>Время</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Иван Петров</td>
+                        <td>Сдал задание "Spring MVC"</td>
+                        <td>10 мин назад</td>
+                    </tr>
+                    <tr>
+                        <td>Мария Сидорова</td>
+                        <td>Создала новое задание</td>
+                        <td>1 час назад</td>
+                    </tr>
+                    <tr>
+                        <td>Алексей Козлов</td>
+                        <td>Оценил задание "Базы данных"</td>
+                        <td>2 часа назад</td>
+                    </tr>
+                </tbody>
+            </table>
+        </article>
+    </main>
+</body>
+</html>

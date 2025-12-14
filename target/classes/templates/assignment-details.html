@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Детали задания</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+</head>
+<body>
+<div th:replace="fragments/navbar"></div>
+
+    <main class="container">
+        <article class="card" th:object="${assignment}">
+            <header>
+                <h1 th:text="*{title}">Название задания</h1>
+                <p><strong>Статус:</strong> <span th:text="*{status}">статус</span></p>
+            </header>
+            
+            <div class="grid">
+                <div>
+                    <h3>Описание</h3>
+                    <p th:text="*{description} ?: 'Описание отсутствует'">Описание задания</p>
+                    
+                    <h3>Критерии оценки</h3>
+                    <p th:text="*{criteria} ?: 'Критерии не указаны'">Критерии оценки</p>
+                </div>
+                
+                <div>
+                    <h3>Информация</h3>
+                    <p><strong>Дедлайн:</strong> <span th:text="*{deadline}">дата</span></p>
+                    <p><strong>Преподаватель:</strong> <span th:text="*{teacherName}">имя</span></p>
+                    <p><strong>Создано:</strong> <span th:text="*{createdAt}">дата создания</span></p>
+                </div>
+            </div>
+
+            <h3>Назначенные студенты</h3>
+            <div th:if="*{assignedStudents != null and !assignedStudents.empty}" class="grid">
+                <div th:each="student : *{assignedStudents}" class="card outline">
+                    <p><strong th:text="${student.fullName}">Имя студента</strong></p>
+                    <p th:text="${student.username}">логин</p>
+                    <p>Статус: <span th:text="${student.submissionStatus} ?: 'Не сдано'">статус</span></p>
+                </div>
+            </div>
+            <div th:if="*{assignedStudents == null or assignedStudents.empty}">
+                <p>Студенты не назначены</p>
+            </div>
+
+            <footer class="grid">
+                <a th:href="@{/assignments/all}" role="button" class="secondary">Назад к списку</a>
+                <a th:href="@{/submissions/submit/{id}(id=*{id})}" role="button">Сдать задание</a>
+                <a th:href="@{/assignments/delete/{id}(id=*{id})}" 
+                   role="button" 
+                   class="contrast"
+                   onclick="return confirm('Вы уверены, что хотите удалить это задание?')">
+                    Удалить задание
+                </a>
+            </footer>
+        </article>
+    </main>
+</body>
+</html>

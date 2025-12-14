@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ru"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система управления заданиями</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <style>
+        .hero {
+            text-align: center;
+            padding: 4rem 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-bottom: 2rem;
+            border-radius: 0 0 20px 20px;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+        .feature-card {
+            padding: 2rem;
+            border: 1px solid #e1e1e1;
+            border-radius: 12px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .user-info {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .role-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 1rem;
+            margin: 0.25rem;
+        }
+        .badge-teacher { background: #4caf50; color: white; }
+        .badge-student { background: #2196f3; color: white; }
+        .badge-admin { background: #f44336; color: white; }
+    </style>
+</head>
+<body>
+<!-- Навигация с Spring Security -->
+<div th:replace="fragments/navbar"></div>
+
+<main class="container">
+    <!-- Герой-секция с приветствием -->
+    <section>
+        <h1>Добро пожаловать в систему управления заданиями!</h1>
+        <p>Современная платформа для преподавателей и студентов</p>
+
+        <!-- Приветствие пользователя -->
+        <div sec:authorize="isAuthenticated()" class="user-info">
+            <h3>👋 Привет, <span sec:authentication="name"></span>!</h3>
+            <p>
+<!--                    <span sec:authentication="principal.authorities" th:each="authority : ${#authentication.principal.authorities}">-->
+<!--                        <span th:if="${authority.authority == 'ROLE_USER'}" class="role-badge badge-student">🎓 Студент</span>-->
+<!--                        <span th:if="${authority.authority == 'ROLE_TEACHER'}" class="role-badge badge-teacher">👨‍🏫 Преподаватель</span>-->
+<!--                        <span th:if="${authority.authority == 'ROLE_ADMIN'}" class="role-badge badge-admin">⚙️ Администратор</span>-->
+<!--                    </span>-->
+<!--                    <span sec:authentication="principal.authorities" th:each="authority : ${#authentication.principal.authorities}">-->
+                        <span sec:authorize="hasAnyAuthority('ROLE_STUDENT')" class="role-badge badge-student">🎓 Студент</span>
+                        <span sec:authorize="hasAnyAuthority('ROLE_TEACHER')" class="role-badge badge-teacher">👨‍🏫 Преподаватель</span>
+                        <span sec:authorize="hasAnyAuthority('ROLE_ADMIN')" class="role-badge badge-admin">⚙️ Администратор</span>
+<!--                    </span>-->
+            </p>
+        </div>
+
+        <!-- Кнопки действий -->
+        <div class="action-buttons">
+            <a th:href="@{/assignments/all}" role="button" class="secondary">📋 Смотреть задания</a>
+
+            <!-- Разные кнопки для разных ролей -->
+            <a sec:authorize="hasAnyAuthority('TEACHER', 'ADMIN')"
+               th:href="@{/assignments/add}"
+               role="button"
+               class="primary">➕ Создать задание</a>
+
+            <a sec:authorize="hasAuthority('STUDENT')"
+               th:href="@{/assignments/my}"
+               role="button"
+               class="primary">📖 Мои задания</a>
+
+            <a sec:authorize="!isAuthenticated()"
+               th:href="@{/register}"
+               role="button"
+               class="contrast">📝 Зарегистрироваться</a>
+        </div>
+    </section>
+
+    <!-- Карточки функций -->
+    <section class="features">
+        <!-- Для преподавателей -->
+        <article class="feature-card" sec:authorize="hasAnyAuthority('TEACHER', 'ADMIN')">
+            <h3>👨‍🏫 Для преподавателей</h3>
+            <p>Создавайте задания, назначайте студентам, оценивайте работы и отслеживайте прогресс</p>
+            <div class="feature-links">
+                <a th:href="@{/assignments/add}" class="contrast">➕ Создать задание</a>
+                <a th:href="@{/admin/statistics}" class="secondary">📊 Статистика</a>
+            </div>
+        </article>
+
+        <!-- Для студентов -->
+        <article class="feature-card" sec:authorize="hasAuthority('STUDENT')">
+            <h3>🎓 Для студентов</h3>
+            <p>Просматривайте задания, сдавайте работы, получайте оценки и отслеживайте свою успеваемость</p>
+            <div class="feature-links">
+                <a th:href="@{/assignments/my}" class="contrast">📖 Мои задания</a>
+                <a th:href="@{/submissions/grades}" class="secondary">📈 Мои оценки</a>
+            </div>
+        </article>
+
+        <!-- Общие функции -->
+        <article class="feature-card">
+            <h3>📚 Все задания</h3>
+            <p>Просматривайте все доступные задания в системе, независимо от вашей роли</p>
+            <a th:href="@{/assignments/all}" class="contrast">📋 Посмотреть все</a>
+        </article>
+
+        <!-- Для администраторов -->
+        <article class="feature-card" sec:authorize="hasAuthority('ADMIN')">
+            <h3>⚙️ Администрирование</h3>
+            <p>Управляйте пользователями, настройками системы и отслеживайте общую статистику</p>
+            <div class="feature-links">
+                <a th:href="@{/admin/users}" class="contrast">👥 Пользователи</a>
+                <a th:href="@{/admin/statistics}" class="secondary">📊 Статистика</a>
+            </div>
+        </article>
+
+        <!-- Для гостей -->
+        <article class="feature-card" sec:authorize="!isAuthenticated()">
+            <h3>🔑 Присоединяйтесь!</h3>
+            <p>Зарегистрируйтесь в системе, чтобы получить доступ ко всем функциям платформы</p>
+            <div class="feature-links">
+                <a th:href="@{/login}" class="contrast">🔑 Войти</a>
+                <a th:href="@{/register}" class="secondary">📝 Регистрация</a>
+            </div>
+        </article>
+
+        <!-- Техподдержка -->
+        <article class="feature-card">
+            <h3>🛟 Помощь</h3>
+            <p>Нужна помощь? Ознакомьтесь с руководством пользователя или свяжитесь с поддержкой</p>
+            <a href="#" class="contrast">📚 Руководство</a>
+        </article>
+    </section>
+
+    <!-- Быстрый доступ (только для авторизованных) -->
+    <section sec:authorize="isAuthenticated()" class="quick-access">
+        <h2>⚡ Быстрый доступ</h2>
+        <div class="grid">
+            <!-- Для студентов -->
+            <div sec:authorize="hasAuthority('STUDENT')" class="card">
+                <h4>🎓 Студенту</h4>
+                <ul>
+                    <li><a th:href="@{/assignments/my}">Мои текущие задания</a></li>
+                    <li><a th:href="@{/submissions/grades}">Мои оценки</a></li>
+                    <li><a th:href="@{/assignments/all}">Все доступные задания</a></li>
+                </ul>
+            </div>
+
+            <!-- Для преподавателей -->
+            <div sec:authorize="hasAuthority('TEACHER')" class="card">
+                <h4>👨‍🏫 Преподавателю</h4>
+                <ul>
+                    <li><a th:href="@{/assignments/add}">Создать новое задание</a></li>
+                    <li><a th:href="@{/admin/statistics}">Статистика успеваемости</a></li>
+                    <li><a th:href="@{/assignments/all}">Все мои задания</a></li>
+                </ul>
+            </div>
+
+            <!-- Для администраторов -->
+            <div sec:authorize="hasAuthority('ADMIN')" class="card">
+                <h4>⚙️ Администратору</h4>
+                <ul>
+                    <li><a th:href="@{/admin/users}">Управление пользователями</a></li>
+                    <li><a th:href="@{/admin/statistics}">Системная статистика</a></li>
+                    <li><a th:href="@{/assignments/all}">Управление заданиями</a></li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Статистика (для всех) -->
+    <section class="stats">
+        <h2>📊 Статистика системы</h2>
+        <div class="grid">
+            <div class="card">
+                <h4>Пользователи</h4>
+                <p><strong>150+</strong> зарегистрированных</p>
+            </div>
+            <div class="card">
+                <h4>Задания</h4>
+                <p><strong>45</strong> активных заданий</p>
+            </div>
+            <div class="card">
+                <h4>Успеваемость</h4>
+                <p><strong>89%</strong> средняя успеваемость</p>
+            </div>
+            <div class="card">
+                <h4>Время</h4>
+                <p><strong>24/7</strong> доступ к системе</p>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- Футер -->
+<footer class="container-fluid" style="text-align: center; padding: 2rem; margin-top: 4rem; border-top: 1px solid #e1e1e1;">
+    <div class="grid">
+        <div>
+            <h5>TaskManager</h5>
+            <p>Система управления учебными заданиями</p>
+            <small>Версия 1.0.0</small>
+        </div>
+        <div>
+            <h5>Контакты</h5>
+            <p>support@taskmanager.edu</p>
+            <p>+7 (XXX) XXX-XX-XX</p>
+        </div>
+        <div>
+            <h5>Быстрые ссылки</h5>
+            <p><a th:href="@{/}">Главная</a></p>
+            <p><a th:href="@{/assignments/all}">Все задания</a></p>
+            <p sec:authorize="isAuthenticated()"><a th:href="@{/profile}">Профиль</a></p>
+        </div>
+    </div>
+    <small>Система управления заданиями &copy; 2024. Все права защищены.</small>
+</footer>
+
+<script>
+    // Простая анимация при загрузке
+    document.addEventListener('DOMContentLoaded', function() {
+        const featureCards = document.querySelectorAll('.feature-card');
+        featureCards.forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.1}s`;
+            card.classList.add('fade-in');
+        });
+    });
+
+    // Добавляем стиль для анимации
+    const style = document.createElement('style');
+    style.textContent = `
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+            opacity: 0;
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        .user-info-small {
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+        .action-buttons {
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .feature-links {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+        .quick-access {
+            margin: 3rem 0;
+        }
+        .stats {
+            margin: 3rem 0;
+        }
+    `;
+    document.head.appendChild(style);
+</script>
+</body>
+</html>

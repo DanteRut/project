@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/head"/>
+<body>
+<div th:replace="fragments/navbar"></div>
+<main class="container">
+    <article style="max-width: 600px; margin: 0 auto;">
+        <hgroup>
+            <h1>Вход</h1>
+            <p>Введите свои данные для доступа к системе</p>
+        </hgroup>
+        <form th:action="@{/login}" th:method="post">
+            <label for="username">
+                Логин
+                <input id="username" 
+                       name="username" 
+                       th:value="${username}"
+                       type="text" 
+                       placeholder="Введите логин"
+                       required/>
+            </label>
+
+            <label for="password">
+                Пароль
+                <input id="password" 
+                       name="password" 
+                       type="password" 
+                       placeholder="Введите пароль"
+                       required/>
+            </label>
+
+            <label>
+                <input type="checkbox" name="remember-me" role="switch">
+                Запомнить меня
+            </label>
+
+            <p class="text-danger" th:if="${badCredentials}">
+                <mark>Неверный логин или пароль.</mark>
+            </p>
+
+            <button type="submit">Войти</button>
+        </form>
+    </article>
+</main>
+<footer th:replace="fragments/footer"></footer>
+</body>
+</html>

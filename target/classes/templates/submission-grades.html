@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои оценки</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+</head>
+<body>
+
+<div th:replace="fragments/navbar"></div>
+
+<main class="container">
+    <h1>Мои оценки</h1>
+
+    <div th:if="${errorMessage != null}" class="alert alert-error">
+        <span th:text="${errorMessage}"></span>
+    </div>
+
+    <div th:if="${grades != null}">
+        <!-- Статистика -->
+        <article class="card">
+            <header>
+                <h3>Общая статистика</h3>
+            </header>
+            <div class="grid">
+                <div style="text-align: center;">
+                    <h4 th:text="${grades.totalAssignments != null ? grades.totalAssignments : 0}">0</h4>
+                    <small>Всего заданий</small>
+                </div>
+                <div style="text-align: center;">
+                    <h4 th:text="${grades.completedAssignments != null ? grades.completedAssignments : 0}">0</h4>
+                    <small>Выполнено</small>
+                </div>
+                <div style="text-align: center;">
+                    <h4 th:text="${grades.averageGrade != null ? grades.averageGrade : 'N/A'}">0</h4>
+                    <small>Средний балл</small>
+                </div>
+            </div>
+        </article>
+
+        <!-- Список оценок -->
+        <div th:if="${grades.submissions != null and !grades.submissions.empty}">
+            <h3>Оценки по заданиям</h3>
+            <table role="grid">
+                <thead>
+                <tr>
+                    <th>Задание</th>
+                    <th>Дата сдачи</th>
+                    <th>Оценка</th>
+                    <th>Комментарий преподавателя</th>
+                    <th>Статус</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="submission : ${grades.submissions}">
+                    <td th:text="${submission.assignmentTitle != null ? submission.assignmentTitle : 'Без названия'}">Название</td>
+                    <td th:text="${submission.submittedAt != null ? submission.submittedAt : 'Не указана'}">дата</td>
+                    <td>
+                        <strong th:if="${submission.grade != null}"
+                                th:text="${submission.grade}"
+                                th:class="${submission.grade >= 4} ? 'success' : 'warning'">
+                            оценка
+                        </strong>
+                        <span th:if="${submission.grade == null}">Не оценено</span>
+                    </td>
+                    <td th:text="${submission.teacherComment != null ? submission.teacherComment : 'Нет комментария'}">комментарий</td>
+                    <td>
+                                <span th:if="${submission.status != null}"
+                                      th:class="${submission.status == 'GRADED'} ? 'success' : 'secondary'"
+                                      th:text="${submission.status}">
+                                    статус
+                                </span>
+                        <span th:if="${submission.status == null}">Не определен</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div th:if="${grades == null or grades.submissions == null or grades.submissions.empty}" class="text-center">
+        <article>
+            <h4>Оценки не найдены</h4>
+            <p>У вас пока нет оценок. Сдайте задания, чтобы увидеть их здесь.</p>
+            <a th:href="@{/assignments/my}" role="button">Мои задания</a>
+        </article>
+    </div>
+</main>
+</body>
+</html>

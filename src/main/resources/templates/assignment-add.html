@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создание задания</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <style>
+        .invalid {
+            border-color: #ff6b6b !important;
+        }
+        .text-danger {
+            color: #ff6b6b;
+        }
+    </style>
+</head>
+<body>
+
+<div th:replace="fragments/navbar"></div>
+
+<main class="container">
+    <h1>Создание нового задания</h1>
+
+    <!-- Сообщения об ошибках -->
+    <div th:if="${errorMessage != null}" class="alert alert-error">
+        <span th:text="${errorMessage}"></span>
+    </div>
+
+    <form th:action="@{/assignments/add}"
+          th:method="post"
+          th:object="${assignmentModel}">
+
+        <!-- Название задания -->
+        <label for="title">
+            Название задания *
+            <input id="title"
+                   th:field="*{title}"
+                   type="text"
+                   placeholder="Введите название задания"
+                   th:errorclass="invalid"
+                   required>
+            <small th:if="${#fields != null and #fields.hasErrors('title')}"
+                   th:errors="*{title}"
+                   class="text-danger"></small>
+        </label>
+
+        <!-- Описание -->
+        <label for="description">
+            Описание
+            <textarea id="description"
+                      th:field="*{description}"
+                      placeholder="Опишите задание подробнее..."
+                      rows="4"></textarea>
+        </label>
+
+        <!-- Дедлайн -->
+        <label for="deadline">
+            Дедлайн *
+            <input id="deadline"
+                   th:field="*{deadline}"
+                   type="datetime-local"
+                   th:errorclass="invalid"
+                   pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}"
+                   required>
+            <small th:if="${#fields != null and #fields.hasErrors('deadline')}"
+                   th:errors="*{deadline}"
+                   class="text-danger"></small>
+        </label>
+
+        <!-- Критерии оценки -->
+        <label for="criteria">
+            Критерии оценки
+            <textarea id="criteria"
+                      th:field="*{criteria}"
+                      placeholder="Опишите критерии оценки задания..."
+                      rows="3"></textarea>
+        </label>
+
+        <!-- Выбор студентов -->
+        <label for="studentIds">
+            Назначить студентам *
+            <select id="studentIds"
+                    th:field="*{studentIds}"
+                    multiple
+                    size="5"
+                    th:errorclass="invalid"
+                    required>
+                <option th:if="${students != null and !students.empty}"
+                        th:each="student : ${students}"
+                        th:value="${student.id}"
+                        th:text="${(student.fullName != null ? student.fullName : 'Не указано') + ' (' + (student.username != null ? student.username : 'Нет логина') + ')'}">
+                </option>
+                <option th:if="${students == null or students.empty}"
+                        value=""
+                        disabled>
+                    Нет доступных студентов
+                </option>
+            </select>
+            <small class="text-muted">Удерживайте Ctrl (Cmd на Mac) для выбора нескольких студентов</small>
+            <small th:if="${#fields != null and #fields.hasErrors('studentIds')}"
+                   th:errors="*{studentIds}"
+                   class="text-danger"></small>
+        </label>
+
+        <div class="grid">
+            <button type="submit" class="primary">Создать задание</button>
+            <a th:href="@{/assignments/all}" role="button" class="secondary">Отмена</a>
+        </div>
+    </form>
+</main>
+</body>
+</html>

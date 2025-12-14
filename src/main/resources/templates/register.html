@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/head"/>
+<body>
+<div th:replace="fragments/navbar"></div>
+<main class="container">
+  <article style="max-width: 600px; margin: 0 auto;">
+    <hgroup>
+      <h1>Регистрация</h1>
+      <p>Создайте новую учетную запись для доступа к системе</p>
+    </hgroup>
+    <form th:action="@{/register}"
+          th:method="post"
+          th:object="${userRegistrationDto}">
+      <label for="username">
+        Логин
+        <input th:field="*{username}"
+               th:errorclass="is-invalid"
+               type="text" 
+               id="username"
+               placeholder="Выберите логин"
+               required/>
+        <small th:if="${#fields.hasErrors('username')}" th:errors="*{username}" class="text-danger"></small>
+      </label>
+
+      <label for="fullname">
+        Полное имя
+        <input th:field="*{fullname}"
+               th:errorclass="is-invalid"
+               type="text" 
+               id="fullname"
+               placeholder="Введите полное имя"
+               required/>
+        <small th:if="${#fields.hasErrors('fullname')}" th:errors="*{fullname}" class="text-danger"></small>
+      </label>
+
+      <label for="email">
+        Электронная почта
+        <input th:field="*{email}"
+               th:errorclass="is-invalid"
+               type="email" 
+               id="email"
+               placeholder="ваш.email@example.com"
+               required/>
+        <small th:if="${#fields.hasErrors('email')}" th:errors="*{email}" class="text-danger"></small>
+      </label>
+
+      <label for="age">
+        Возраст
+        <input th:field="*{age}"
+               th:errorclass="is-invalid"
+               type="number" 
+               min="0" 
+               id="age"
+               placeholder="Введите возраст"
+               required/>
+        <small th:if="${#fields.hasErrors('age')}" th:errors="*{age}" class="text-danger"></small>
+      </label>
+
+      <label for="password">
+        Пароль
+        <input th:field="*{password}"
+               required 
+               minlength="5" 
+               maxlength="20"
+               th:errorclass="is-invalid"
+               type="password" 
+               id="password"
+               placeholder="Придумайте пароль"/>
+        <small th:if="${#fields.hasErrors('password')}" th:errors="*{password}" class="text-danger"></small>
+      </label>
+
+      <label for="confirmPassword">
+        Подтвердите пароль
+        <input th:field="*{confirmPassword}"
+               required 
+               minlength="5" 
+               maxlength="20"
+               th:errorclass="is-invalid"
+               type="password" 
+               id="confirmPassword"
+               placeholder="Повторите пароль"/>
+        <small th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}" class="text-danger"></small>
+      </label>
+
+    <button type="submit">Зарегистрироваться</button>
+    </form>
+  </article>
+</main>
+<footer th:replace="fragments/footer"></footer>
+</body>
+</html>
