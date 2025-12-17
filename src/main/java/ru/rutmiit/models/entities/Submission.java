@@ -2,12 +2,12 @@ package ru.rutmiit.models.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
-import ru.rutmiit.models.enums.SubmissionStatus;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "submissions")
+@Table(name = "submissions",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"assignment_id", "student_id"}))
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,27 +23,24 @@ public class Submission extends BaseEntity {
     @JoinColumn(name = "student_id", nullable = false)
     private User student;
 
-    @Column(length = 5000)
-    private String solutionText;
+    @Column(name = "file_path", length = 500)
+    private String filePath;
 
-    @Column(name = "attachment_url")
-    private String attachmentUrl;
+    @Column(name = "submitted_at", nullable = false)
+    private LocalDateTime submittedAt;
 
-    @Column(length = 1000)
-    private String comment;
+    @Column(name = "is_late")
+    private Boolean isLate;
 
-    private Integer grade;
+    private Integer score;
 
-    @Column(name = "teacher_comment", length = 1000)
-    private String teacherComment;
+    @Column(length = 2000)
+    private String feedback;
 
-    @Enumerated(EnumType.STRING)
-    @Builder.Default
-    private SubmissionStatus status = SubmissionStatus.SUBMITTED;
-
-    @Column(name = "submitted_at")
-    @Builder.Default
-    private LocalDateTime submittedAt = LocalDateTime.now();
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "graded_by")
+    @ToString.Exclude
+    private User gradedBy;
 
     @Column(name = "graded_at")
     private LocalDateTime gradedAt;

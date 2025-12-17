@@ -1,292 +1,310 @@
 <!DOCTYPE html>
-<html lang="ru"
-      xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Система управления заданиями</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <title>EduSubmit - Система управления заданиями</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
-        .hero {
-            text-align: center;
-            padding: 4rem 1rem;
+        .hero-section {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            margin-bottom: 2rem;
-            border-radius: 0 0 20px 20px;
-        }
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin: 3rem 0;
+            padding: 5rem 0;
+            margin-bottom: 3rem;
         }
         .feature-card {
-            padding: 2rem;
-            border: 1px solid #e1e1e1;
-            border-radius: 12px;
-            text-align: center;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: transform 0.3s;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .feature-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
-        .user-info {
+        .nav-link.active {
+            font-weight: bold;
+            border-bottom: 3px solid #667eea;
+        }
+        .stat-card {
             background: #f8f9fa;
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 1rem 0;
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-align: center;
         }
-        .role-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 1rem;
-            margin: 0.25rem;
-        }
-        .badge-teacher { background: #4caf50; color: white; }
-        .badge-student { background: #2196f3; color: white; }
-        .badge-admin { background: #f44336; color: white; }
     </style>
 </head>
 <body>
-<!-- Навигация с Spring Security -->
-<div th:replace="fragments/navbar"></div>
+<!-- Навигация -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold text-primary" href="/">
+            <i class="bi bi-journal-bookmark-fill me-2"></i>EduSubmit
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link active" href="/">Главная</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/assignments/my">Задания</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/submissions/my">Мои сдачи</a>
+                </li>
+                <li th:if="${#authorization.expression('hasRole(''TEACHER'')')}">
+                    <a class="nav-link" href="/assignments/add">Создать задание</a>
+                </li>
+            </ul>
+            <div class="d-flex align-items-center">
+                    <span th:if="${#authorization.expression('isAuthenticated()')}"
+                          class="me-3 text-muted">
+                        <i class="bi bi-person-circle me-1"></i>
+                        <span th:text="${#authentication.name}"></span>
+                    </span>
+                <div th:if="${#authorization.expression('isAuthenticated()')}">
+                    <a href="/profile" class="btn btn-outline-primary btn-sm me-2">
+                        <i class="bi bi-person"></i> Профиль
+                    </a>
+                    <form th:action="@{/logout}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            <i class="bi bi-box-arrow-right"></i> Выйти
+                        </button>
+                    </form>
+                </div>
+                <div th:unless="${#authorization.expression('isAuthenticated()')}">
+                    <a href="/login" class="btn btn-outline-primary btn-sm me-2">Войти</a>
+                    <a href="/register" class="btn btn-primary btn-sm">Регистрация</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
 
+<!-- Основной контент -->
 <main class="container">
-    <!-- Герой-секция с приветствием -->
-    <section>
-        <h1>Добро пожаловать в систему управления заданиями!</h1>
-        <p>Современная платформа для преподавателей и студентов</p>
-
-        <!-- Приветствие пользователя -->
-        <div sec:authorize="isAuthenticated()" class="user-info">
-            <h3>👋 Привет, <span sec:authentication="name"></span>!</h3>
-            <p>
-<!--                    <span sec:authentication="principal.authorities" th:each="authority : ${#authentication.principal.authorities}">-->
-<!--                        <span th:if="${authority.authority == 'ROLE_USER'}" class="role-badge badge-student">🎓 Студент</span>-->
-<!--                        <span th:if="${authority.authority == 'ROLE_TEACHER'}" class="role-badge badge-teacher">👨‍🏫 Преподаватель</span>-->
-<!--                        <span th:if="${authority.authority == 'ROLE_ADMIN'}" class="role-badge badge-admin">⚙️ Администратор</span>-->
-<!--                    </span>-->
-<!--                    <span sec:authentication="principal.authorities" th:each="authority : ${#authentication.principal.authorities}">-->
-                        <span sec:authorize="hasAnyAuthority('ROLE_STUDENT')" class="role-badge badge-student">🎓 Студент</span>
-                        <span sec:authorize="hasAnyAuthority('ROLE_TEACHER')" class="role-badge badge-teacher">👨‍🏫 Преподаватель</span>
-                        <span sec:authorize="hasAnyAuthority('ROLE_ADMIN')" class="role-badge badge-admin">⚙️ Администратор</span>
-<!--                    </span>-->
-            </p>
-        </div>
-
-        <!-- Кнопки действий -->
-        <div class="action-buttons">
-            <a th:href="@{/assignments/all}" role="button" class="secondary">📋 Смотреть задания</a>
-
-            <!-- Разные кнопки для разных ролей -->
-            <a sec:authorize="hasAnyAuthority('TEACHER', 'ADMIN')"
-               th:href="@{/assignments/add}"
-               role="button"
-               class="primary">➕ Создать задание</a>
-
-            <a sec:authorize="hasAuthority('STUDENT')"
-               th:href="@{/assignments/my}"
-               role="button"
-               class="primary">📖 Мои задания</a>
-
-            <a sec:authorize="!isAuthenticated()"
-               th:href="@{/register}"
-               role="button"
-               class="contrast">📝 Зарегистрироваться</a>
-        </div>
-    </section>
-
-    <!-- Карточки функций -->
-    <section class="features">
-        <!-- Для преподавателей -->
-        <article class="feature-card" sec:authorize="hasAnyAuthority('TEACHER', 'ADMIN')">
-            <h3>👨‍🏫 Для преподавателей</h3>
-            <p>Создавайте задания, назначайте студентам, оценивайте работы и отслеживайте прогресс</p>
-            <div class="feature-links">
-                <a th:href="@{/assignments/add}" class="contrast">➕ Создать задание</a>
-                <a th:href="@{/admin/statistics}" class="secondary">📊 Статистика</a>
-            </div>
-        </article>
-
-        <!-- Для студентов -->
-        <article class="feature-card" sec:authorize="hasAuthority('STUDENT')">
-            <h3>🎓 Для студентов</h3>
-            <p>Просматривайте задания, сдавайте работы, получайте оценки и отслеживайте свою успеваемость</p>
-            <div class="feature-links">
-                <a th:href="@{/assignments/my}" class="contrast">📖 Мои задания</a>
-                <a th:href="@{/submissions/grades}" class="secondary">📈 Мои оценки</a>
-            </div>
-        </article>
-
-        <!-- Общие функции -->
-        <article class="feature-card">
-            <h3>📚 Все задания</h3>
-            <p>Просматривайте все доступные задания в системе, независимо от вашей роли</p>
-            <a th:href="@{/assignments/all}" class="contrast">📋 Посмотреть все</a>
-        </article>
-
-        <!-- Для администраторов -->
-        <article class="feature-card" sec:authorize="hasAuthority('ADMIN')">
-            <h3>⚙️ Администрирование</h3>
-            <p>Управляйте пользователями, настройками системы и отслеживайте общую статистику</p>
-            <div class="feature-links">
-                <a th:href="@{/admin/users}" class="contrast">👥 Пользователи</a>
-                <a th:href="@{/admin/statistics}" class="secondary">📊 Статистика</a>
-            </div>
-        </article>
-
-        <!-- Для гостей -->
-        <article class="feature-card" sec:authorize="!isAuthenticated()">
-            <h3>🔑 Присоединяйтесь!</h3>
-            <p>Зарегистрируйтесь в системе, чтобы получить доступ ко всем функциям платформы</p>
-            <div class="feature-links">
-                <a th:href="@{/login}" class="contrast">🔑 Войти</a>
-                <a th:href="@{/register}" class="secondary">📝 Регистрация</a>
-            </div>
-        </article>
-
-        <!-- Техподдержка -->
-        <article class="feature-card">
-            <h3>🛟 Помощь</h3>
-            <p>Нужна помощь? Ознакомьтесь с руководством пользователя или свяжитесь с поддержкой</p>
-            <a href="#" class="contrast">📚 Руководство</a>
-        </article>
-    </section>
-
-    <!-- Быстрый доступ (только для авторизованных) -->
-    <section sec:authorize="isAuthenticated()" class="quick-access">
-        <h2>⚡ Быстрый доступ</h2>
-        <div class="grid">
-            <!-- Для студентов -->
-            <div sec:authorize="hasAuthority('STUDENT')" class="card">
-                <h4>🎓 Студенту</h4>
-                <ul>
-                    <li><a th:href="@{/assignments/my}">Мои текущие задания</a></li>
-                    <li><a th:href="@{/submissions/grades}">Мои оценки</a></li>
-                    <li><a th:href="@{/assignments/all}">Все доступные задания</a></li>
-                </ul>
-            </div>
-
-            <!-- Для преподавателей -->
-            <div sec:authorize="hasAuthority('TEACHER')" class="card">
-                <h4>👨‍🏫 Преподавателю</h4>
-                <ul>
-                    <li><a th:href="@{/assignments/add}">Создать новое задание</a></li>
-                    <li><a th:href="@{/admin/statistics}">Статистика успеваемости</a></li>
-                    <li><a th:href="@{/assignments/all}">Все мои задания</a></li>
-                </ul>
-            </div>
-
-            <!-- Для администраторов -->
-            <div sec:authorize="hasAuthority('ADMIN')" class="card">
-                <h4>⚙️ Администратору</h4>
-                <ul>
-                    <li><a th:href="@{/admin/users}">Управление пользователями</a></li>
-                    <li><a th:href="@{/admin/statistics}">Системная статистика</a></li>
-                    <li><a th:href="@{/assignments/all}">Управление заданиями</a></li>
-                </ul>
+    <!-- Hero секция -->
+    <section class="hero-section rounded-3">
+        <div class="container text-center">
+            <h1 class="display-4 fw-bold mb-4">Добро пожаловать в EduSubmit</h1>
+            <p class="lead mb-4">Инновационная система для управления учебными заданиями, сдачами работ и оценками</p>
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="d-flex gap-3 justify-content-center">
+                        <a th:if="${#authorization.expression('isAuthenticated()')}"
+                           href="/assignments/my"
+                           class="btn btn-light btn-lg px-4">
+                            <i class="bi bi-journal-text me-2"></i>Мои задания
+                        </a>
+                        <a th:unless="${#authorization.expression('isAuthenticated()')}"
+                           href="/register"
+                           class="btn btn-light btn-lg px-4">
+                            <i class="bi bi-person-plus me-2"></i>Начать сейчас
+                        </a>
+                        <a th:if="${#authorization.expression('hasRole(''TEACHER'')')}"
+                           href="/assignments/add"
+                           class="btn btn-outline-light btn-lg px-4">
+                            <i class="bi bi-plus-circle me-2"></i>Создать задание
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- Статистика (для всех) -->
-    <section class="stats">
-        <h2>📊 Статистика системы</h2>
-        <div class="grid">
-            <div class="card">
-                <h4>Пользователи</h4>
-                <p><strong>150+</strong> зарегистрированных</p>
+    <!-- Уведомления -->
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>
+        <span th:text="${successMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <span th:text="${errorMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Функционал для разных ролей -->
+    <div th:if="${#authorization.expression('isAuthenticated()')}">
+        <div th:if="${#authorization.expression('hasRole(''STUDENT'')')}" class="row g-4 mb-5">
+            <div class="col-md-4">
+                <div class="feature-card card h-100">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <i class="bi bi-journal-text display-4 text-primary"></i>
+                        </div>
+                        <h5 class="card-title">Активные задания</h5>
+                        <p class="card-text text-muted">Просмотрите задания, которые нужно выполнить</p>
+                        <a href="/assignments/my" class="btn btn-primary">Перейти к заданиям</a>
+                    </div>
+                </div>
             </div>
-            <div class="card">
-                <h4>Задания</h4>
-                <p><strong>45</strong> активных заданий</p>
+            <div class="col-md-4">
+                <div class="feature-card card h-100">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <i class="bi bi-upload display-4 text-success"></i>
+                        </div>
+                        <h5 class="card-title">Сдать работу</h5>
+                        <p class="card-text text-muted">Загрузите выполненное задание до дедлайна</p>
+                        <a href="/submissions/my" class="btn btn-success">Мои сдачи</a>
+                    </div>
+                </div>
             </div>
-            <div class="card">
-                <h4>Успеваемость</h4>
-                <p><strong>89%</strong> средняя успеваемость</p>
+            <div class="col-md-4">
+                <div class="feature-card card h-100">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <i class="bi bi-graph-up display-4 text-info"></i>
+                        </div>
+                        <h5 class="card-title">Результаты</h5>
+                        <p class="card-text text-muted">Отслеживайте свои оценки и прогресс</p>
+                        <a href="/profile" class="btn btn-info">Мой прогресс</a>
+                    </div>
+                </div>
             </div>
-            <div class="card">
-                <h4>Время</h4>
-                <p><strong>24/7</strong> доступ к системе</p>
+        </div>
+
+        <div th:if="${#authorization.expression('hasRole(''TEACHER'')')}" class="row g-4 mb-5">
+            <div class="col-md-4">
+                <div class="feature-card card h-100">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <i class="bi bi-plus-circle display-4 text-primary"></i>
+                        </div>
+                        <h5 class="card-title">Создать задание</h5>
+                        <p class="card-text text-muted">Добавьте новое задание для студентов</p>
+                        <a href="/assignments/add" class="btn btn-primary">Создать</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card card h-100">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <i class="bi bi-check-square display-4 text-warning"></i>
+                        </div>
+                        <h5 class="card-title">Проверить работы</h5>
+                        <p class="card-text text-muted">Оцените сданные работы студентов</p>
+                        <a href="/submissions/my" class="btn btn-warning">К проверке</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card card h-100">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <i class="bi bi-bar-chart display-4 text-success"></i>
+                        </div>
+                        <h5 class="card-title">Статистика</h5>
+                        <p class="card-text text-muted">Анализируйте успеваемость студентов</p>
+                        <a href="#" class="btn btn-success">Статистика</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Информация для неавторизованных пользователей -->
+    <div th:unless="${#authorization.expression('isAuthenticated()')}" class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="feature-card card h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-mortarboard display-4 text-primary"></i>
+                    </div>
+                    <h5 class="card-title">Для студентов</h5>
+                    <p class="card-text text-muted">Сдавайте задания в срок, получайте обратную связь от преподавателей</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="feature-card card h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-person-badge display-4 text-success"></i>
+                    </div>
+                    <h5 class="card-title">Для преподавателей</h5>
+                    <p class="card-text text-muted">Создавайте задания, оценивайте работы, управляйте группами</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="feature-card card h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-shield-check display-4 text-warning"></i>
+                    </div>
+                    <h5 class="card-title">Безопасность</h5>
+                    <p class="card-text text-muted">Защищённое хранение данных и конфиденциальность</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Быстрые действия -->
+    <section class="mt-5">
+        <h3 class="mb-4">Быстрый доступ</h3>
+        <div class="row g-3">
+            <div class="col-md-3 col-6">
+                <a href="/assignments/my" class="text-decoration-none">
+                    <div class="stat-card">
+                        <i class="bi bi-journal-text display-6 text-primary mb-2"></i>
+                        <h6>Мои задания</h6>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-3 col-6">
+                <a href="/submissions/my" class="text-decoration-none">
+                    <div class="stat-card">
+                        <i class="bi bi-clock-history display-6 text-warning mb-2"></i>
+                        <h6>Сроки сдачи</h6>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-3 col-6">
+                <a href="/profile" class="text-decoration-none">
+                    <div class="stat-card">
+                        <i class="bi bi-person-circle display-6 text-info mb-2"></i>
+                        <h6>Мой профиль</h6>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-3 col-6">
+                <a th:if="${#authorization.expression('hasRole(''ADMIN'')')}"
+                   href="/admin/dashboard"
+                   class="text-decoration-none">
+                    <div class="stat-card">
+                        <i class="bi bi-gear display-6 text-danger mb-2"></i>
+                        <h6>Администрирование</h6>
+                    </div>
+                </a>
             </div>
         </div>
     </section>
 </main>
 
 <!-- Футер -->
-<footer class="container-fluid" style="text-align: center; padding: 2rem; margin-top: 4rem; border-top: 1px solid #e1e1e1;">
-    <div class="grid">
-        <div>
-            <h5>TaskManager</h5>
-            <p>Система управления учебными заданиями</p>
-            <small>Версия 1.0.0</small>
-        </div>
-        <div>
-            <h5>Контакты</h5>
-            <p>support@taskmanager.edu</p>
-            <p>+7 (XXX) XXX-XX-XX</p>
-        </div>
-        <div>
-            <h5>Быстрые ссылки</h5>
-            <p><a th:href="@{/}">Главная</a></p>
-            <p><a th:href="@{/assignments/all}">Все задания</a></p>
-            <p sec:authorize="isAuthenticated()"><a th:href="@{/profile}">Профиль</a></p>
+<footer class="bg-dark text-white mt-5 py-4">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <h5><i class="bi bi-journal-bookmark-fill me-2"></i>EduSubmit</h5>
+                <p class="mb-0">Система управления учебными заданиями</p>
+                <p class="text-muted small mt-2">© 2024 Все права защищены</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <h6>Контакты</h6>
+                <p class="mb-1"><i class="bi bi-envelope me-2"></i>support@edusubmit.ru</p>
+                <p class="mb-0"><i class="bi bi-telephone me-2"></i>+7 (XXX) XXX-XX-XX</p>
+            </div>
         </div>
     </div>
-    <small>Система управления заданиями &copy; 2024. Все права защищены.</small>
 </footer>
 
-<script>
-    // Простая анимация при загрузке
-    document.addEventListener('DOMContentLoaded', function() {
-        const featureCards = document.querySelectorAll('.feature-card');
-        featureCards.forEach((card, index) => {
-            card.style.animationDelay = `${index * 0.1}s`;
-            card.classList.add('fade-in');
-        });
-    });
-
-    // Добавляем стиль для анимации
-    const style = document.createElement('style');
-    style.textContent = `
-        .fade-in {
-            animation: fadeIn 0.5s ease-out forwards;
-            opacity: 0;
-        }
-        @keyframes fadeIn {
-            to { opacity: 1; }
-        }
-        .user-info-small {
-            padding: 0.5rem;
-            background: #f8f9fa;
-            border-radius: 4px;
-            font-size: 0.875rem;
-        }
-        .action-buttons {
-            margin-top: 2rem;
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        .feature-links {
-            margin-top: 1rem;
-            display: flex;
-            gap: 0.5rem;
-            justify-content: center;
-        }
-        .quick-access {
-            margin: 3rem 0;
-        }
-        .stats {
-            margin: 3rem 0;
-        }
-    `;
-    document.head.appendChild(style);
-</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

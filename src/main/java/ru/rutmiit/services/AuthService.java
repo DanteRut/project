@@ -44,7 +44,6 @@ public class AuthService {
                 .password(passwordEncoder.encode(registrationDTO.getPassword()))
                 .email(registrationDTO.getEmail())
                 .fullName(registrationDTO.getFullname())
-                .age(registrationDTO.getAge())
                 .role(UserRole.STUDENT) // По умолчанию STUDENT
                 .build();
 

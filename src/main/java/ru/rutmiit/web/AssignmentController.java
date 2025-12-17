@@ -1,25 +1,20 @@
 package ru.rutmiit.web;
 
-import ru.rutmiit.dto.CreateAssignmentDto;
-import ru.rutmiit.dto.ShowAssignmentDto;
-import ru.rutmiit.models.exceptions.AssignmentNotFoundException;
-import ru.rutmiit.models.entities.User;
-import ru.rutmiit.services.AssignmentService;
-import ru.rutmiit.services.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import ru.rutmiit.dto.CreateAssignmentDto;
+import ru.rutmiit.dto.ShowAssignmentDto;
+import ru.rutmiit.models.entities.*;
+import ru.rutmiit.services.*;
 
 import java.security.Principal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -30,127 +25,154 @@ public class AssignmentController {
 
     private final AssignmentService assignmentService;
     private final UserService userService;
+//    private final GroupService groupService;
+    private final SubjectService subjectService;
 
-    // Список всех заданий с пагинацией и поиском
-    @GetMapping("/all")
-    public String showAllAssignments(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "deadline") String sortBy,
-            @RequestParam(required = false) String search,
-            Model model) {
-
-        log.debug("Отображение списка заданий: страница={}, размер={}, поиск={}", page, size, search);
-
-        if (search != null && !search.trim().isEmpty()) {
-            // Режим поиска
-            List<ShowAssignmentDto> assignments = assignmentService.searchAssignments(search);
-            model.addAttribute("assignments", assignments);
-            model.addAttribute("search", search);
-        } else {
-            // Режим пагинации
-            Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).ascending());
-            Page<ShowAssignmentDto> assignmentPage = assignmentService.getAllAssignmentsPaginated(pageable);
-
-            model.addAttribute("assignments", assignmentPage.getContent());
-            model.addAttribute("currentPage", page);
-            model.addAttribute("totalPages", assignmentPage.getTotalPages());
-            model.addAttribute("totalItems", assignmentPage.getTotalElements());
-        }
-
-        return "assignment-list";
-    }
-
-    // Детальная информация о задании
-    @GetMapping("/details/{id}")
-    public String assignmentDetails(@PathVariable("id") String id, Model model) {
-        log.debug("Запрос деталей задания: {}", id);
-        try {
-            Object assignmentDetails = assignmentService.getAssignmentDetails(id);
-            model.addAttribute("assignment", assignmentDetails);
-            return "assignment-details";
-        } catch (AssignmentNotFoundException e) {
-            model.addAttribute("errorMessage", e.getMessage());
-            return "redirect:/assignments/all";
-        }
-    }
-
-    // Форма добавления задания
     @GetMapping("/add")
     public String showAddAssignmentForm(Model model, Principal principal) {
-        log.debug("Отображение формы добавления задания");
+        log.debug("Отображение формы создания задания");
 
-        // Загружаем список студентов для выбора
-        List<User> students = userService.getAllStudents();
-        model.addAttribute("students", students);
+        User teacher = userService.findByUsername(principal.getName())
+                .orElseThrow(() -> new IllegalArgumentException("Преподаватель не найден"));
 
-        // ВАЖНО: Добавить пустой объект DTO в модель
-        model.addAttribute("assignmentModel", new CreateAssignmentDto());
+        if (!teacher.isTeacher()) {
+            return "redirect:/access-denied";
+        }
+
+        List<String> groups = userService.findGroups();
+        List<Subject> subjects = subjectService.getAllSubjects();
+
+        model.addAttribute("groups", groups);
+        model.addAttribute("subjects", subjects);
+        model.addAttribute("assignmentDto", new CreateAssignmentDto());
 
         return "assignment-add";
     }
 
-    // Обработка формы добавления задания
     @PostMapping("/add")
-    public String addAssignment(@Valid @ModelAttribute("assignmentModel") CreateAssignmentDto assignmentDto,
+    public String addAssignment(@Valid @ModelAttribute("assignmentDto") CreateAssignmentDto dto,
                                 BindingResult bindingResult,
                                 Principal principal,
                                 RedirectAttributes redirectAttributes) {
-        log.debug("Обработка POST запроса на добавление задания");
+        log.debug("Обработка создания задания");
 
         if (bindingResult.hasErrors()) {
             log.warn("Ошибки валидации: {}", bindingResult.getAllErrors());
-            redirectAttributes.addFlashAttribute("assignmentModel", assignmentDto);
-            redirectAttributes.addFlashAttribute(
-                    "org.springframework.validation.BindingResult.assignmentModel",
-                    bindingResult);
+            redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.assignmentDto", bindingResult);
+            redirectAttributes.addFlashAttribute("assignmentDto", dto);
             return "redirect:/assignments/add";
         }
 
         try {
-            assignmentService.createAssignment(assignmentDto, principal.getName());
+            Assignment assignment = assignmentService.createAssignment(dto, principal.getName());
             redirectAttributes.addFlashAttribute("successMessage",
-                    "Задание '" + assignmentDto.getTitle() + "' успешно создано!");
+                    String.format("Задание '%s' успешно создано для группы %s",
+                            assignment.getTitle(),
+                            assignment.getGroup()));
+            return "redirect:/assignments/my";
         } catch (Exception e) {
             log.error("Ошибка при создании задания", e);
             redirectAttributes.addFlashAttribute("errorMessage",
                     "Ошибка при создании задания: " + e.getMessage());
             return "redirect:/assignments/add";
         }
-
-        return "redirect:/assignments/all";
     }
 
-    // Удаление задания
-    @GetMapping("/delete/{id}")
-    public String deleteAssignment(@PathVariable("id") String id,
-                                   RedirectAttributes redirectAttributes) {
-        log.debug("Запрос на удаление задания: {}", id);
+    @GetMapping("/my")
+    public String showMyAssignments(Principal principal, Model model) {
+        log.debug("Отображение заданий пользователя: {}", principal.getName());
 
-        try {
-            assignmentService.deleteAssignment(id);
-            redirectAttributes.addFlashAttribute("successMessage",
-                    "Задание успешно удалено!");
-        } catch (AssignmentNotFoundException e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        User user = userService.findByUsername(principal.getName())
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+
+        List<ShowAssignmentDto> assignments;
+
+        if (user.isStudent()) {
+            List<Assignment> studentAssignments = assignmentService.getAssignmentsForStudent(user);
+            assignments = studentAssignments.stream()
+                    .map(assignmentService::convertToShowDto)
+                    .toList();
+            model.addAttribute("isStudent", true);
+        } else if (user.isTeacher()) {
+            List<Assignment> teacherAssignments = assignmentService.getAssignmentsForTeacher(user);
+            assignments = teacherAssignments.stream()
+                    .map(assignmentService::convertToShowDto)
+                    .toList();
+            model.addAttribute("isTeacher", true);
+        } else {
+            return "redirect:/access-denied";
         }
 
-        return "redirect:/assignments/all";
+        model.addAttribute("assignments", assignments);
+        return "assignment-my";
     }
 
-    // Страница для студентов - мои задания
-    @GetMapping("/my")
-    public String showMyAssignments(Principal principal, Model model,
-                                    @RequestParam(defaultValue = "0") int page) {
-        log.debug("Отображение заданий студента: {}", principal.getName());
+    @GetMapping("/details/{id}")
+    public String assignmentDetails(@PathVariable String id, Principal principal, Model model) {
+        log.debug("Детали задания: {}", id);
 
-        Pageable pageable = PageRequest.of(page, 10);
-        Page<ShowAssignmentDto> myAssignments = assignmentService.getAssignmentsForStudent(principal.getName(), pageable);
+        try {
+            Assignment assignment = assignmentService.getAssignmentById(id);
+            User user = userService.findByUsername(principal.getName())
+                    .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
-        model.addAttribute("assignments", myAssignments.getContent());
-        model.addAttribute("currentPage", page);
-        model.addAttribute("totalPages", myAssignments.getTotalPages());
+            // Проверяем доступ
+            if (user.isStudent() && !assignment.getGroup().equals(user.getGroup())) {
+                return "redirect:/access-denied";
+            }
+            if (user.isTeacher() && !assignment.getTeacher().getId().equals(user.getId())) {
+                return "redirect:/access-denied";
+            }
 
-        return "assignment-my";
+            List<Submission> submissions = assignment.getSubmissions();
+            long gradedCount = submissions != null ?
+                    submissions.stream().filter(s -> s.getScore() != null).count() : 0;
+            long lateCount = submissions != null ?
+                    submissions.stream().filter(s -> Boolean.TRUE.equals(s.getIsLate())).count() : 0;
+            double averageScore = submissions != null && gradedCount > 0 ?
+                    submissions.stream()
+                            .filter(s -> s.getScore() != null)
+                            .mapToInt(Submission::getScore)
+                            .average()
+                            .orElse(0.0) : 0.0;
+
+            model.addAttribute("now", LocalDateTime.now());
+            model.addAttribute("assignment", assignment);
+            model.addAttribute("submissions", assignment.getSubmissions());
+            model.addAttribute("gradedCount", gradedCount);
+            model.addAttribute("lateCount", lateCount);
+            model.addAttribute("averageScore", String.format("%.1f", averageScore));
+            return "assignment-details";
+        } catch (Exception e) {
+            log.error("Ошибка при получении задания", e);
+            model.addAttribute("errorMessage", "Задание не найдено");
+            return "redirect:/assignments/my";
+        }
+    }
+
+    @GetMapping("/delete/{id}")
+    public String deleteAssignment(@PathVariable String id,
+                                   Principal principal,
+                                   RedirectAttributes redirectAttributes) {
+        log.debug("Удаление задания: {}", id);
+
+        try {
+            Assignment assignment = assignmentService.getAssignmentById(id);
+            User user = userService.findByUsername(principal.getName())
+                    .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+
+            // Проверяем права
+            if (!user.isTeacher() || !assignment.getTeacher().getId().equals(user.getId())) {
+                return "redirect:/access-denied";
+            }
+
+            assignmentService.deleteAssignment(id);
+            redirectAttributes.addFlashAttribute("successMessage", "Задание успешно удалено");
+        } catch (Exception e) {
+            log.error("Ошибка при удалении задания", e);
+            redirectAttributes.addFlashAttribute("errorMessage", "Ошибка при удалении задания");
+        }
+
+        return "redirect:/assignments/my";
     }
 }

@@ -40,7 +40,7 @@ public class AuthController {
     public String doRegister(@Valid UserRegistrationDto userRegistrationDto,
                              BindingResult bindingResult,
                              RedirectAttributes redirectAttributes) {
-        log.debug("Обработка регистрации пользователя: {}", userRegistrationDto.getUsername());
+        log.debug("Обработка регистрации пользователя: {}", userRegistrationDto.getEmail());
 
         if (bindingResult.hasErrors()) {
             log.warn("Ошибки валидации при регистрации: {}", bindingResult.getAllErrors());
@@ -51,8 +51,8 @@ public class AuthController {
         }
 
         // Раскомментируйте если AuthService.register реализован
-         this.authService.register(userRegistrationDto);
-        log.info("Пользователь успешно зарегистрирован: {}", userRegistrationDto.getUsername());
+        this.authService.register(userRegistrationDto);
+        log.info("Пользователь успешно зарегистрирован: {}", userRegistrationDto.getEmail());
 
         return "redirect:/login";
     }
@@ -65,11 +65,11 @@ public class AuthController {
 
     @PostMapping("/login-error")
     public String onFailedLogin(
-            @ModelAttribute(UsernamePasswordAuthenticationFilter.SPRING_SECURITY_FORM_USERNAME_KEY) String username,
+            @ModelAttribute(UsernamePasswordAuthenticationFilter.SPRING_SECURITY_FORM_USERNAME_KEY) String email,
             RedirectAttributes redirectAttributes) {
 
-        log.warn("Неудачная попытка входа для пользователя: {}", username);
-        redirectAttributes.addFlashAttribute(UsernamePasswordAuthenticationFilter.SPRING_SECURITY_FORM_USERNAME_KEY, username);
+        log.warn("Неудачная попытка входа для пользователя: {}", email);
+        redirectAttributes.addFlashAttribute(UsernamePasswordAuthenticationFilter.SPRING_SECURITY_FORM_USERNAME_KEY, email);
         redirectAttributes.addFlashAttribute("badCredentials", true);
 
         return "redirect:/login";
@@ -77,21 +77,23 @@ public class AuthController {
 
     @GetMapping("/profile")
     public String profile(Principal principal, Model model) {
-        String username = principal.getName();
-        log.debug("Отображение профиля пользователя: {}", username);
+        String email = principal.getName();
+        log.debug("Отображение профиля пользователя: {}", email);
 
-        User user = authService.getUser(username);
+        User user = authService.getUser(email);
 
         // Используем createdAt из BaseEntity
         ru.rutmiit.views.UserProfileView userProfileView = new ru.rutmiit.views.UserProfileView(
-                username,
+                email,
                 user.getEmail(),
                 user.getFullName(),
                 user.getRole().getDisplayName(),  // Используем displayName
-                user.getCreatedAt()  // Поле из BaseEntity
+                user.getCreatedAt(),  // Поле из BaseEntity
+                user.getGroup()
         );
 
         model.addAttribute("user", userProfileView);
+//        model.getAttribute("role", )
 
         return "profile";
     }

@@ -1,22 +1,17 @@
 package ru.rutmiit.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 
 @Data
 public class SubmitAssignmentDto {
-    @NotBlank(message = "Решение не может быть пустым!")
-    private String solutionText;
 
+    @NotBlank(message = "Комментарий не может быть пустым!")
     private String comment;
-    private String attachmentUrl;
 
-    public String getAttachmentUrl() {
-        return attachmentUrl;
-    }
+    @NotNull(message = "Файл обязателен!")
+    private MultipartFile file;
 
-    public void setAttachmentUrl(String attachmentUrl) {
-        this.attachmentUrl = attachmentUrl;
-    }
 }

@@ -19,35 +19,39 @@ public class User extends BaseEntity {
     @Column(nullable = false, unique = true, length = 50)
     private String username;
 
-    @Column(nullable = false, length = 100)
-    private String password;
-
-    @Column(unique = true, nullable = false, length = 100)
+    @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    @Column(name = "full_name", nullable = false, length = 100)
-    private String fullName;
-
-    @Column(nullable = false)
-    private Integer age;
+    @Column(nullable = false, length = 255)
+    private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role;
 
+    @Column(name = "full_name", nullable = false, length = 100)
+    private String fullName;
+
+    @Column(name = "group_name", length = 7)
+    private String group;
+
+    // Связи только в одну сторону для избежания циклических зависимостей
     @OneToMany(mappedBy = "teacher", cascade = CascadeType.ALL)
     @Builder.Default
+    @ToString.Exclude
     private List<Assignment> createdAssignments = new ArrayList<>();
-
-    @ManyToMany(mappedBy = "assignedStudents")
-    @Builder.Default
-    private List<Assignment> assignedAssignments = new ArrayList<>();
 
     @OneToMany(mappedBy = "student", cascade = CascadeType.ALL)
     @Builder.Default
+    @ToString.Exclude
     private List<Submission> submissions = new ArrayList<>();
 
-    // Дополнительные методы для удобства
+    @OneToMany(mappedBy = "gradedBy", cascade = CascadeType.ALL)
+    @Builder.Default
+    @ToString.Exclude
+    private List<Submission> gradedSubmissions = new ArrayList<>();
+
+    // Дополнительные методы
     public boolean isAdmin() {
         return role == UserRole.ADMIN;
     }
@@ -62,10 +66,5 @@ public class User extends BaseEntity {
 
     public String getRoleDisplayName() {
         return role != null ? role.getDisplayName() : "";
-    }
-
-    // Метод для получения роли с префиксом ROLE_
-    public String getRoleWithPrefix() {
-        return role != null ? "ROLE_" + role.name() : "";
     }
 }

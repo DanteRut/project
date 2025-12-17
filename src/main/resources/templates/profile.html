@@ -1,121 +1,401 @@
 <!DOCTYPE html>
-<html lang="ru"
-      xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мой профиль</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <title>Мой профиль - EduSubmit</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
-        .role-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 1rem;
-            margin: 0.25rem;
+        .profile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
         }
-        .badge-teacher { background: #4caf50; color: white; }
-        .badge-student { background: #2196f3; color: white; }
-        .badge-admin { background: #f44336; color: white; }
+        .avatar {
+            width: 120px;
+            height: 120px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: #667eea;
+            margin: 0 auto;
+            border: 5px solid white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .stats-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            height: 100%;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .badge-custom {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: normal;
+        }
+        .nav-pills .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .activity-item {
+            border-left: 3px solid #667eea;
+            padding-left: 1rem;
+            margin-bottom: 1.5rem;
+        }
     </style>
 </head>
 <body>
-
-<div th:replace="fragments/navbar"></div>
-
-<main class="container">
-    <h1>Мой профиль</h1>
-
-    <div th:if="${errorMessage != null}" class="alert alert-error">
-        <span th:text="${errorMessage}"></span>
+<!-- Навигация -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold text-primary" href="/">
+            <i class="bi bi-journal-bookmark-fill me-2"></i>EduSubmit
+        </a>
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Главная</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/assignments/my">Задания</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/profile">Профиль</a>
+                </li>
+            </ul>
+            <form th:action="@{/logout}" method="post">
+                <button type="submit" class="btn btn-outline-danger btn-sm">
+                    <i class="bi bi-box-arrow-right"></i> Выйти
+                </button>
+            </form>
+        </div>
     </div>
+</nav>
 
-    <!-- Проверка аутентификации -->
-    <div sec:authorize="isAuthenticated()">
-        <!-- Получение информации о пользователе -->
+<!-- Шапка профиля -->
+<div class="profile-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-3 text-center mb-3 mb-md-0">
+                <div class="avatar">
+                    <i class="bi bi-person-circle"></i>
+                </div>
+            </div>
+            <div class="col-md-9">
+                <h1 th:text="${user.fullName}">Иван Иванов</h1>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                        <span class="badge bg-primary badge-custom">
+                            <i class="bi bi-person-badge me-1"></i>
+                            <span th:text="${user.role}">Студент</span>
+                        </span>
+                    <span th:if="${user.group}" class="badge bg-info badge-custom">
+                            <i class="bi bi-people me-1"></i>
+                            <span th:text="${user.group}">УВП-312</span>
+                        </span>
+                    <span class="badge bg-secondary badge-custom">
+                            <i class="bi bi-calendar me-1"></i>
+                            Зарегистрирован: <span th:text="${user.registrationDate}">01.01.2024</span>
+                        </span>
+                </div>
+                <p class="mb-0">
+                    <i class="bi bi-envelope me-2"></i>
+                    <span th:text="${user.email}">user@example.com</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 
-        <div th:if="${user != null}">
-            <article class="card" th:object="${user}">
-                <div class="grid">
-                    <div>
-                        <h2 th:text="*{fullName} ?: 'Не указано'">Имя пользователя</h2>
-                        <p><strong>Логин:</strong> <span th:text="*{username} ?: 'Не указан'">username</span></p>
-                        <p><strong>Email:</strong> <span th:text="*{email} ?: 'Не указан'">email</span></p>
-                        <p><strong>Роль:</strong>
-<!--                            <span class="role-badge badge-student" th:text="*{role} ?: 'Не определена'">роль</span>-->
-                            <span sec:authorize="hasAnyAuthority('ROLE_STUDENT')" class="role-badge badge-student">🎓 Студент</span>
-                            <span sec:authorize="hasAnyAuthority('ROLE_TEACHER')" class="role-badge badge-teacher">👨‍🏫 Преподаватель</span>
-                            <span sec:authorize="hasAnyAuthority('ROLE_ADMIN')" class="role-badge badge-admin">⚙️ Администратор</span>
-                        </p>
-                        <p th:if="*{registrationDate != null}">
-                            <strong>Дата регистрации:</strong>
-                            <span th:text="*{registrationDate}">дата</span>
-                        </p>
+<!-- Основной контент -->
+<div class="container">
+    <div class="row">
+        <!-- Левая колонка - статистика -->
+        <div th:if="${user.role == 'STUDENT'}"class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Статистика</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="stats-card text-center">
+                                <i class="bi bi-journal-text display-6 text-primary mb-2"></i>
+                                <div class="stat-value" th:text="${assignmentsCount ?: 0}">12</div>
+                                <small>Заданий</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stats-card text-center">
+                                <i class="bi bi-check-circle display-6 text-success mb-2"></i>
+                                <div class="stat-value" th:text="${submissionsCount ?: 0}">8</div>
+                                <small>Сдано</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stats-card text-center">
+                                <i class="bi bi-clock-history display-6 text-warning mb-2"></i>
+                                <div class="stat-value" th:text="${pendingCount ?: 0}">4</div>
+                                <small>В процессе</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stats-card text-center">
+                                <i class="bi bi-star display-6 text-info mb-2"></i>
+                                <div class="stat-value" th:text="${averageScore ?: '0'}">85</div>
+                                <small>Средний балл</small>
+                            </div>
+                        </div>
                     </div>
-                    <div style="text-align: center;">
-                        <img src="/images/profile.png"
-                             alt="Профиль"
-                             style="width: 150px; height: 150px; border-radius: 50%; background: #f0f0f0;"
-                             onerror="this.style.display='none'">
-                        <!-- Отображение роли с использованием Spring Security -->
-                        <div sec:authorize="hasAuthority('TEACHER')" class="badge primary">Преподаватель</div>
-                        <div sec:authorize="hasAuthority('STUDENT')" class="badge secondary">Студент</div>
-                        <div sec:authorize="hasAuthority('ADMIN')" class="badge contrast">Администратор</div>
+                </div>
+            </div>
+
+            <!-- Группа -->
+            <div th:if="${user.group != null}" class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-people me-2"></i>Моя группа</h5>
+                </div>
+                <div class="card-body">
+                    <h5 th:text="${user.group}">УВП-312</h5>
+                    <p class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Вы состоите в этой учебной группе
+                    </p>
+                    <a href="#" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-eye me-1"></i>Смотреть одногруппников
+                    </a>
+                </div>
+            </div>
+
+            <!-- Быстрые действия -->
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Быстрые действия</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="/assignments/my" class="btn btn-outline-primary">
+                            <i class="bi bi-journal-text me-2"></i>Мои задания
+                        </a>
+                        <a href="/submissions/my" class="btn btn-outline-success">
+                            <i class="bi bi-upload me-2"></i>Мои сдачи
+                        </a>
+                        <button class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                            <i class="bi bi-pencil me-2"></i>Редактировать профиль
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая колонка - Активность и информация -->
+        <div class="col-md-8">
+            <!-- Навигация по вкладкам -->
+            <ul class="nav nav-pills mb-4">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="pill" href="#activity">Активность</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="pill" href="#assignments">Задания</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="pill" href="#settings">Настройки</a>
+                </li>
+            </ul>
+
+            <!-- Содержимое вкладок -->
+            <div class="tab-content">
+                <!-- Вкладка активности -->
+                <div class="tab-pane fade show active" id="activity">
+                    <div class="card">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Последняя активность</h5>
+                        </div>
+                        <div class="card-body">
+                            <div th:if="${recentActivity?.empty}" class="text-center py-4">
+                                <i class="bi bi-calendar-x display-4 text-muted mb-3"></i>
+                                <p class="text-muted">Активность отсутствует</p>
+                            </div>
+
+                            <div class="activity-item">
+                                <h6>Задание сдано</h6>
+                                <p class="text-muted small mb-1">
+                                    <i class="bi bi-clock me-1"></i>Сегодня в 14:30
+                                </p>
+                                <p class="mb-0">Вы сдали работу "Лабораторная работа по Java"</p>
+                            </div>
+
+                            <div class="activity-item">
+                                <h6>Новое задание</h6>
+                                <p class="text-muted small mb-1">
+                                    <i class="bi bi-clock me-1"></i>Вчера в 10:15
+                                </p>
+                                <p class="mb-0">Преподаватель Иванов И.И. добавил новое задание по Математике</p>
+                            </div>
+
+                            <div class="activity-item">
+                                <h6>Оценка получена</h6>
+                                <p class="text-muted small mb-1">
+                                    <i class="bi bi-clock me-1"></i>3 дня назад
+                                </p>
+                                <p class="mb-0">Вы получили оценку 95/100 за задание "Проектирование БД"</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <footer class="grid">
-                    <a th:href="@{/assignments/all}" role="button" class="secondary">К заданиям</a>
+                <!-- Вкладка заданий -->
+                <div class="tab-pane fade" id="assignments">
+                    <div class="card">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="bi bi-journal-text me-2"></i>Текущие задания</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                    <tr>
+                                        <th>Задание</th>
+                                        <th>Предмет</th>
+                                        <th>Дедлайн</th>
+                                        <th>Статус</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr>
+                                        <td>Лабораторная работа по Java</td>
+                                        <td>Программирование</td>
+                                        <td>15.12.2024</td>
+                                        <td><span class="badge bg-success">Сдано</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Домашнее задание по математике</td>
+                                        <td>Математика</td>
+                                        <td>20.12.2024</td>
+                                        <td><span class="badge bg-warning">В процессе</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Эссе по философии</td>
+                                        <td>Философия</td>
+                                        <td>10.12.2024</td>
+                                        <td><span class="badge bg-danger">Просрочено</span></td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-                    <!-- Ссылки в зависимости от роли -->
-                    <a th:href="@{/submissions/grades}"
-                       role="button"
-                       sec:authorize="hasAuthority('STUDENT')">
-                        Мои оценки
-                    </a>
+                <!-- Вкладка настроек -->
+                <div class="tab-pane fade" id="settings">
+                    <div class="card">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Настройки профиля</h5>
+                        </div>
+                        <div class="card-body">
+                            <form>
+                                <div class="mb-3">
+                                    <label class="form-label">Уведомления</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="emailNotifications" checked>
+                                        <label class="form-check-label" for="emailNotifications">
+                                            Email уведомления о новых заданиях
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="deadlineReminders" checked>
+                                        <label class="form-check-label" for="deadlineReminders">
+                                            Напоминания о дедлайнах
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="gradeNotifications">
+                                        <label class="form-check-label" for="gradeNotifications">
+                                            Уведомления о новых оценках
+                                        </label>
+                                    </div>
+                                </div>
 
-                    <a th:href="@{/assignments/add}"
-                       role="button"
-                       sec:authorize="hasAnyAuthority('TEACHER', 'ADMIN')">
-                        Создать задание
-                    </a>
+                                <div class="mb-3">
+                                    <label class="form-label">Внешний вид</label>
+                                    <select class="form-select">
+                                        <option selected>Светлая тема</option>
+                                        <option>Темная тема</option>
+                                        <option>Автоматически</option>
+                                    </select>
+                                </div>
 
-                    <a th:href="@{/admin/dashboard}"
-                       role="button"
-                       sec:authorize="hasAnyAuthority('TEACHER', 'ADMIN')">
-                        Панель управления
-                    </a>
-
-                    <!-- Специальные ссылки для администраторов -->
-                    <a th:href="@{/admin/users}"
-                       role="button"
-                       sec:authorize="hasAuthority('ADMIN')"
-                       class="contrast">
-                        Управление пользователями
-                    </a>
-                </footer>
-            </article>
-        </div>
-
-        <div th:if="${user == null}" class="text-center">
-            <article>
-                <h4>Профиль не найден</h4>
-                <p>Не удалось загрузить информацию о профиле.</p>
-                <a th:href="@{/}" role="button">Вернуться на главную</a>
-            </article>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">Сохранить настройки</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+</div>
 
-    <!-- Если пользователь не аутентифицирован -->
-    <div sec:authorize="!isAuthenticated()" class="text-center">
-        <article>
-            <h4>Доступ запрещен</h4>
-            <p>Для просмотра профиля необходимо войти в систему.</p>
-            <a th:href="@{/login}" role="button">Войти</a>
-            <a th:href="@{/register}" role="button" class="secondary">Зарегистрироваться</a>
-        </article>
+<!-- Модальное окно редактирования профиля -->
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактировать профиль</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label class="form-label">Полное имя</label>
+                        <input type="text" class="form-control" th:value="${user.fullName}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" th:value="${user.email}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Новый пароль</label>
+                        <input type="password" class="form-control" placeholder="Оставьте пустым, чтобы не менять">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary">Сохранить изменения</button>
+            </div>
+        </div>
     </div>
-</main>
+</div>
+
+<!-- Футер -->
+<footer class="bg-light mt-5 py-4 border-top">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <h6><i class="bi bi-journal-bookmark-fill me-2"></i>EduSubmit</h6>
+                <p class="mb-0 small text-muted">Система управления учебными заданиями</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <p class="small mb-0">
+                    <i class="bi bi-clock me-1"></i>
+                    Последний вход: <span th:text="${#dates.format(#dates.createNow(), 'dd.MM.yyyy HH:mm')}">Сегодня</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

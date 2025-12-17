@@ -3,81 +3,333 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мои задания</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <title>Мои задания - EduSubmit</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .assignment-card {
+            transition: transform 0.2s;
+            border-left: 4px solid #667eea;
+        }
+        .assignment-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .assignment-card.expired {
+            border-left-color: #dc3545;
+            opacity: 0.8;
+        }
+        .assignment-card.completed {
+            border-left-color: #28a745;
+        }
+        .badge-status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: normal;
+        }
+        .search-box {
+            max-width: 300px;
+        }
+        .filter-btn.active {
+            background-color: #667eea;
+            color: white;
+        }
+    </style>
 </head>
 <body>
-
-<div th:replace="fragments/navbar"></div>
-
-<main class="container">
-    <h1>Мои задания</h1>
-
-    <!-- Сообщения -->
-    <div th:if="${successMessage != null}" class="alert alert-success">
-        <span th:text="${successMessage}"></span>
-    </div>
-
-    <!-- Список моих заданий -->
-    <div th:if="${assignments != null and !assignments.empty}" class="grid">
-        <div th:each="assignment : ${assignments}" class="card">
-            <header>
-                <h3 th:text="${assignment.title} ?: 'Без названия'">Название задания</h3>
-                <span th:if="${assignment.status != null}"
-                      th:class="${(assignment.status == 'ACTIVE') ? 'success' : (assignment.status == 'COMPLETED') ? 'primary' : 'secondary'}"
-                      th:text="${assignment.status}">
-                        статус
+<!-- Навигация -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold text-primary" href="/">
+            <i class="bi bi-journal-bookmark-fill me-2"></i>EduSubmit
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Главная</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/assignments/my">Мои задания</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/submissions/my">Мои сдачи</a>
+                </li>
+                <li th:if="${#authorization.expression('hasRole(''TEACHER'')')}">
+                    <a class="nav-link" href="/assignments/add">Создать задание</a>
+                </li>
+            </ul>
+            <div class="d-flex align-items-center">
+                    <span class="me-3 text-muted">
+                        <i class="bi bi-person-circle me-1"></i>
+                        <span th:text="${#authentication.name}"></span>
                     </span>
-            </header>
-
-            <p th:text="${assignment.description} ?: 'Описание отсутствует'">Описание</p>
-
-            <p><strong>Дедлайн:</strong> <span th:text="${assignment.deadline} ?: 'Не указан'">дата</span></p>
-            <p><strong>Преподаватель:</strong> <span th:text="${assignment.teacherName} ?: 'Не назначен'">имя</span></p>
-
-            <p th:if="${assignment.status != null}">
-                <strong>Статус сдачи:</strong>
-                <span th:text="${assignment.status}">статус</span>
-            </p>
-
-            <footer class="grid">
-                <a th:href="@{/assignments/details/{id}(id=${assignment.id})}"
-                   role="button" class="outline">Подробнее</a>
-                <a th:href="@{/submissions/submit/{id}(id=${assignment.id})}"
-                   role="button"
-                   th:if="${assignment.status == 'ACTIVE'}">
-                    Сдать задание
+                <a href="/profile" class="btn btn-outline-primary btn-sm me-2">
+                    <i class="bi bi-person"></i> Профиль
                 </a>
-            </footer>
+                <form th:action="@{/logout}" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="bi bi-box-arrow-right"></i> Выйти
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Основной контент -->
+<main class="container mt-4">
+    <!-- Заголовок и действия -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i class="bi bi-journal-text me-2"></i>
+                <span th:if="${isStudent}">Мои задания</span>
+                <span th:if="${isTeacher}">Задания, которые я создал</span>
+            </h2>
+            <p class="text-muted mb-0" th:if="${isStudent}">
+                Здесь отображаются все задания вашей группы
+            </p>
+            <p class="text-muted mb-0" th:if="${isTeacher}">
+                Управляйте заданиями для ваших групп
+            </p>
+        </div>
+        <div>
+            <a th:if="${isTeacher}" href="/assignments/add" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Создать задание
+            </a>
         </div>
     </div>
 
-    <!-- Пагинация -->
-    <nav th:if="${totalPages != null and totalPages > 1}" aria-label="Pagination">
-        <ul class="pagination">
-            <li th:if="${currentPage > 0}">
-                <a th:href="@{/assignments/my(page=${currentPage - 1})}">« Назад</a>
-            </li>
+    <!-- Уведомления -->
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>
+        <span th:text="${successMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
 
-            <li th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
-                <a th:href="@{/assignments/my(page=${i})}"
-                   th:text="${i + 1}"
-                   th:classappend="${i == currentPage} ? 'active' : ''"></a>
-            </li>
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <span th:text="${errorMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
 
-            <li th:if="${currentPage < totalPages - 1}">
-                <a th:href="@{/assignments/my(page=${currentPage + 1})}">Вперёд »</a>
-            </li>
-        </ul>
-    </nav>
+    <!-- Панель фильтров и поиска -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-outline-primary filter-btn active" data-filter="all">
+                            Все
+                        </button>
+                        <button class="btn btn-outline-primary filter-btn" data-filter="active">
+                            Активные
+                        </button>
+                        <button class="btn btn-outline-primary filter-btn" data-filter="expired">
+                            Просроченные
+                        </button>
+                        <button class="btn btn-outline-primary filter-btn" data-filter="completed">
+                            Завершенные
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-search"></i>
+                            </span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="Поиск заданий...">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <div th:if="${assignments == null or assignments.empty}" class="text-center">
-        <article>
-            <h4>Задания не найдены</h4>
-            <p>У вас пока нет назначенных заданий.</p>
-            <a th:href="@{/assignments/all}" role="button">Посмотреть все задания</a>
-        </article>
+    <!-- Список заданий -->
+    <div class="row" id="assignmentsContainer">
+        <div th:each="assignment : ${assignments}" class="col-md-6 col-lg-4 mb-4">
+            <div class="card assignment-card h-100"
+                 th:classappend="${assignment.status == 'EXPIRED'} ? 'expired' : (${assignment.status == 'COMPLETED'} ? 'completed' : '')"
+                 th:data-status="${assignment.status.toLowerCase()}"
+                 th:data-title="${assignment.title.toLowerCase()}"
+                 th:data-subject="${assignment.subject ?: ''}">
+                <div class="card-body d-flex flex-column">
+                    <!-- Заголовок и статус -->
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title mb-0" th:text="${assignment.title}">
+                            Название задания
+                        </h5>
+                        <span class="badge">
+                                <span th:text="${assignment.status}">Статус</span>
+                            </span>
+                    </div>
+
+                    <!-- Информация о задании -->
+                    <div class="mb-3">
+                        <p class="card-text text-muted small mb-2" th:text="${assignment.description}">
+                            Описание задания
+                        </p>
+                        <div class="d-flex align-items-center mb-1">
+                            <i class="bi bi-person me-2 text-primary"></i>
+                            <small th:text="${assignment.teacherName}">Преподаватель</small>
+                        </div>
+                        <div class="d-flex align-items-center mb-1">
+                            <i class="bi bi-calendar-event me-2 text-warning"></i>
+                            <small>Дедлайн: <span th:text="${assignment.formattedDeadline}">01.01.2024</span></small>
+                        </div>
+                        <div th:if="${assignment.subject}" class="d-flex align-items-center mb-1">
+                            <i class="bi bi-book me-2 text-info"></i>
+                            <small th:text="${assignment.subject}">Предмет</small>
+                        </div>
+                    </div>
+
+                    <!-- Прогресс (для студентов) -->
+                    <div th:if="${isStudent}" class="mt-auto">
+                        <div class="progress mb-2" style="height: 5px;">
+                            <div class="progress-bar" role="progressbar" style="width: 75%;"></div>
+                        </div>
+                        <small class="text-muted">3 дня до дедлайна</small>
+                    </div>
+
+                    <!-- Статистика (для преподавателей) -->
+                    <div th:if="${isTeacher}" class="mt-auto">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <small class="text-muted d-block">Сдано</small>
+                                <strong th:text="${assignment.studentCount}">12</strong>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted d-block">Оценено</small>
+                                <strong>8</strong>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted d-block">Средний</small>
+                                <strong>85</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Действия -->
+                    <div class="d-grid gap-2 mt-3">
+                        <a th:href="@{/assignments/details/{id}(id=${assignment.id})}"
+                           class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-eye me-1"></i> Подробнее
+                        </a>
+
+                        <div th:if="${isStudent}">
+                            <a th:if="${assignment.status == 'ACTIVE'}"
+                               th:href="@{/submissions/submit/{id}(id=${assignment.id})}"
+                               class="btn btn-success btn-sm">
+                                <i class="bi bi-upload me-1"></i> Сдать работу
+                            </a>
+                            <button th:if="${assignment.status != 'ACTIVE'}"
+                                    class="btn btn-secondary btn-sm" disabled>
+                                <i class="bi bi-lock me-1"></i> Задание закрыто
+                            </button>
+                        </div>
+
+                        <div th:if="${isTeacher}" class="btn-group" role="group">
+                            <a th:href="@{#}" class="btn btn-outline-warning btn-sm">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a th:href="@{/assignments/delete/{id}(id=${assignment.id})}"
+                               class="btn btn-outline-danger btn-sm"
+                               onclick="return confirm('Удалить задание?')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Пустой список -->
+    <div th:if="${assignments.empty}" class="text-center py-5">
+        <i class="bi bi-journal-x display-1 text-muted mb-3"></i>
+        <h4>Задания отсутствуют</h4>
+        <p class="text-muted" th:if="${isStudent}">
+            Ваша группа пока не получила заданий
+        </p>
+        <p class="text-muted" th:if="${isTeacher}">
+            Вы еще не создали ни одного задания
+        </p>
+        <a th:if="${isTeacher}" href="/assignments/add" class="btn btn-primary mt-2">
+            <i class="bi bi-plus-circle me-1"></i> Создать первое задание
+        </a>
     </div>
 </main>
+
+<!-- Футер -->
+<footer class="bg-light mt-5 py-4 border-top">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <h6><i class="bi bi-journal-bookmark-fill me-2"></i>EduSubmit</h6>
+                <p class="mb-0 small text-muted">Система управления учебными заданиями</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <p class="small mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <span th:if="${isStudent}">Ваша группа: УВП-312</span>
+                    <span th:if="${isTeacher}">Создано заданий: 5</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Фильтрация и поиск заданий
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const searchInput = document.getElementById('searchInput');
+        const assignments = document.querySelectorAll('.assignment-card');
+
+        // Обработка фильтров
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const filter = this.getAttribute('data-filter');
+
+                // Обновляем активную кнопку
+                filterBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+
+                // Фильтруем задания
+                assignments.forEach(assignment => {
+                    const status = assignment.getAttribute('data-status');
+                    const shouldShow = filter === 'all' || status === filter;
+
+                    if (shouldShow) {
+                        assignment.parentElement.style.display = 'block';
+                    } else {
+                        assignment.parentElement.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // Обработка поиска
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+
+            assignments.forEach(assignment => {
+                const title = assignment.getAttribute('data-title');
+                const subject = assignment.getAttribute('data-subject') || '';
+                const matches = title.includes(searchTerm) || subject.includes(searchTerm);
+
+                if (matches) {
+                    assignment.parentElement.style.display = 'block';
+                } else {
+                    assignment.parentElement.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
 </body>
 </html>

@@ -11,7 +11,9 @@ public class ShowAssignmentDto {
     private String description;
     private LocalDateTime deadline;
     private String status;
+    private String subject;
     private String teacherName;
+    private String group;
     private int studentCount;
     
     public String getFormattedDeadline() {

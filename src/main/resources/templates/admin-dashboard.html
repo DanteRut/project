@@ -3,114 +3,582 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Панель администратора</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <title>Админ панель - EduSubmit</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin: 2rem 0;
+        .admin-sidebar {
+            background: #2c3e50;
+            color: white;
+            min-height: calc(100vh - 56px);
+            position: sticky;
+            top: 56px;
+        }
+        .admin-sidebar .nav-link {
+            color: #bdc3c7;
+            padding: 0.75rem 1.5rem;
+            border-left: 4px solid transparent;
+            transition: all 0.3s;
+        }
+        .admin-sidebar .nav-link:hover {
+            color: white;
+            background: rgba(255,255,255,0.1);
+        }
+        .admin-sidebar .nav-link.active {
+            color: white;
+            background: rgba(255,255,255,0.1);
+            border-left-color: #3498db;
+        }
+        .admin-sidebar .nav-link i {
+            width: 20px;
+            text-align: center;
+            margin-right: 10px;
         }
         .stat-card {
-            text-align: center;
+            border-radius: 10px;
             padding: 1.5rem;
-            border: 1px solid #e1e1e1;
-            border-radius: 8px;
+            color: white;
+            margin-bottom: 1rem;
+        }
+        .stat-card .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        .stat-card.users { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .stat-card.assignments { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .stat-card.submissions { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .stat-card.groups { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .activity-feed {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .activity-item {
+            padding: 1rem;
+            border-left: 3px solid #3498db;
+            margin-bottom: 1rem;
+            background: #f8f9fa;
+            border-radius: 0 5px 5px 0;
+        }
+        .activity-item.warning { border-left-color: #f39c12; }
+        .activity-item.success { border-left-color: #2ecc71; }
+        .activity-item.danger { border-left-color: #e74c3c; }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 2rem;
         }
     </style>
 </head>
 <body>
-    <div th:replace="fragments/navbar"></div>
+<!-- Навигация -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/">
+            <i class="bi bi-journal-bookmark-fill me-2"></i>EduSubmit
+            <span class="badge bg-danger ms-2">ADMIN</span>
+        </a>
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Главная</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/admin/dashboard">Админ панель</a>
+                </li>
+            </ul>
+            <div class="d-flex align-items-center">
+                <div class="dropdown">
+                    <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle me-1"></i>
+                        <span th:text="${#authentication.name}"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/profile">Профиль</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="/logout">Выйти</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
 
-    <main class="container">
-        <h1>Панель администратора</h1>
-
-        <!-- Статистика -->
-        <div class="stats-grid">
-            <article class="stat-card">
-                <h3>150</h3>
-                <p>Всего пользователей</p>
-            </article>
-            <article class="stat-card">
-                <h3>45</h3>
-                <p>Активных заданий</p>
-            </article>
-            <article class="stat-card">
-                <h3>89%</h3>
-                <p>Успеваемость</p>
-            </article>
-            <article class="stat-card">
-                <h3>12</h3>
-                <p>Новых сдач</p>
-            </article>
+<!-- Основной контент -->
+<div class="container-fluid">
+    <div class="row">
+        <!-- Сайдбар -->
+        <div class="col-md-3 col-lg-2 px-0">
+            <div class="admin-sidebar">
+                <div class="p-3">
+                    <h5 class="mb-4">
+                        <i class="bi bi-sliders me-2"></i>Администрирование
+                    </h5>
+                    <nav class="nav flex-column">
+                        <a class="nav-link active" href="/admin/dashboard">
+                            <i class="bi bi-speedometer2"></i> Дашборд
+                        </a>
+                        <a class="nav-link" href="/admin/users">
+                            <i class="bi bi-people"></i> Пользователи
+                        </a>
+                        <a class="nav-link" href="/admin/statistics">
+                            <i class="bi bi-graph-up"></i> Статистика
+                        </a>
+                        <a class="nav-link" href="#">
+                            <i class="bi bi-journal-text"></i> Задания
+                        </a>
+                        <a class="nav-link" href="#">
+                            <i class="bi bi-people-fill"></i> Группы
+                        </a>
+                        <a class="nav-link" href="#">
+                            <i class="bi bi-book"></i> Предметы
+                        </a>
+                        <hr class="text-muted my-3">
+                        <a class="nav-link" href="#">
+                            <i class="bi bi-gear"></i> Настройки
+                        </a>
+                        <a class="nav-link" href="#">
+                            <i class="bi bi-shield-check"></i> Безопасность
+                        </a>
+                        <a class="nav-link" href="#">
+                            <i class="bi bi-clock-history"></i> Логи
+                        </a>
+                    </nav>
+                </div>
+            </div>
         </div>
 
-        <!-- Быстрые действия -->
-        <div class="grid">
-            <article class="card">
-                <header>
-                    <h3>Управление пользователями</h3>
-                </header>
-                <p>Добавление, редактирование и удаление пользователей системы</p>
-                <footer>
-                    <a th:href="@{/admin/users}" role="button">Перейти</a>
-                </footer>
-            </article>
+        <!-- Основная область -->
+        <div class="col-md-9 col-lg-10 px-4 py-4">
+            <!-- Заголовок -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-2">
+                        <i class="bi bi-speedometer2 me-2"></i>Административная панель
+                    </h2>
+                    <p class="text-muted mb-0">Обзор системы и управление</p>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted d-block">
+                        <i class="bi bi-clock me-1"></i>
+                        <span th:text="${#dates.format(#dates.createNow(), 'dd.MM.yyyy HH:mm:ss')}">
+                                сегодня
+                            </span>
+                    </small>
+                    <small class="text-muted">
+                        Сервер: <span class="text-success">●</span> Онлайн
+                    </small>
+                </div>
+            </div>
 
-            <article class="card">
-                <header>
-                    <h3>Статистика системы</h3>
-                </header>
-                <p>Просмотр аналитики и отчетов по успеваемости</p>
-                <footer>
-                    <a th:href="@{/admin/statistics}" role="button">Перейти</a>
-                </footer>
-            </article>
+            <!-- Статистика -->
+            <div class="row mb-4">
+                <div class="col-xl-3 col-md-6">
+                    <div class="stat-card users">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="stat-value">156</div>
+                                <div>Пользователей</div>
+                            </div>
+                            <i class="bi bi-people display-4 opacity-50"></i>
+                        </div>
+                        <div class="mt-3">
+                            <small>
+                                <i class="bi bi-arrow-up me-1"></i>
+                                <span>12% за месяц</span>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="stat-card assignments">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="stat-value">42</div>
+                                <div>Заданий</div>
+                            </div>
+                            <i class="bi bi-journal-text display-4 opacity-50"></i>
+                        </div>
+                        <div class="mt-3">
+                            <small>
+                                <i class="bi bi-arrow-up me-1"></i>
+                                <span>8 активных</span>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="stat-card submissions">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="stat-value">312</div>
+                                <div>Сдач</div>
+                            </div>
+                            <i class="bi bi-check-square display-4 opacity-50"></i>
+                        </div>
+                        <div class="mt-3">
+                            <small>
+                                <i class="bi bi-clock me-1"></i>
+                                <span>24 на проверке</span>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="stat-card groups">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="stat-value">15</div>
+                                <div>Групп</div>
+                            </div>
+                            <i class="bi bi-people-fill display-4 opacity-50"></i>
+                        </div>
+                        <div class="mt-3">
+                            <small>
+                                <i class="bi bi-person me-1"></i>
+                                <span>10-15 студентов в группе</span>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            <article class="card">
-                <header>
-                    <h3>Все задания</h3>
-                </header>
-                <p>Просмотр и управление всеми заданиями в системе</p>
-                <footer>
-                    <a th:href="@{/assignments/all}" role="button">Перейти</a>
-                </footer>
-            </article>
+            <!-- Графики -->
+            <div class="row mb-4">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-bar-chart me-2"></i>Активность за месяц
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="activityChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-pie-chart me-2"></i>Распределение по ролям
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="rolesChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Лента активности и быстрые действия -->
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-clock-history me-2"></i>Последняя активность
+                            </h5>
+                            <button class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="activity-feed">
+                                <div class="activity-item">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>Новый пользователь</strong>
+                                        <small class="text-muted">2 мин назад</small>
+                                    </div>
+                                    <p class="mb-1">Зарегистрировался студент Петров И.С.</p>
+                                    <small class="text-muted">
+                                        <i class="bi bi-person-plus me-1"></i>
+                                        Группа: УВП-312
+                                    </small>
+                                </div>
+
+                                <div class="activity-item success">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>Сдана работа</strong>
+                                        <small class="text-muted">15 мин назад</small>
+                                    </div>
+                                    <p class="mb-1">Студент Иванова А.К. сдала задание по программированию</p>
+                                    <small class="text-muted">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        Задание: Лабораторная работа #3
+                                    </small>
+                                </div>
+
+                                <div class="activity-item warning">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>Новое задание</strong>
+                                        <small class="text-muted">1 час назад</small>
+                                    </div>
+                                    <p class="mb-1">Преподаватель Сидоров П.В. создал новое задание</p>
+                                    <small class="text-muted">
+                                        <i class="bi bi-journal-plus me-1"></i>
+                                        Для группы: УВП-313
+                                    </small>
+                                </div>
+
+                                <div class="activity-item">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>Оценена работа</strong>
+                                        <small class="text-muted">2 часа назад</small>
+                                    </div>
+                                    <p class="mb-1">Преподаватель оценил 5 работ по математике</p>
+                                    <small class="text-muted">
+                                        <i class="bi bi-star me-1"></i>
+                                        Средний балл: 85/100
+                                    </small>
+                                </div>
+
+                                <div class="activity-item danger">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>Проблема с доступом</strong>
+                                        <small class="text-muted">3 часа назад</small>
+                                    </div>
+                                    <p class="mb-1">Обнаружено 3 неудачные попытки входа</p>
+                                    <small class="text-muted">
+                                        <i class="bi bi-shield-exclamation me-1"></i>
+                                        IP: 192.168.1.100
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-lightning me-2"></i>Быстрые действия
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <a href="/admin/users" class="text-decoration-none">
+                                        <div class="card text-center h-100 border-primary">
+                                            <div class="card-body">
+                                                <i class="bi bi-person-plus display-4 text-primary mb-3"></i>
+                                                <h6>Добавить пользователя</h6>
+                                                <p class="small text-muted mb-0">
+                                                    Создать нового пользователя в системе
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col-md-6">
+                                    <a href="#" class="text-decoration-none">
+                                        <div class="card text-center h-100 border-success">
+                                            <div class="card-body">
+                                                <i class="bi bi-journal-plus display-4 text-success mb-3"></i>
+                                                <h6>Создать группу</h6>
+                                                <p class="small text-muted mb-0">
+                                                    Добавить новую учебную группу
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col-md-6">
+                                    <a href="#" class="text-decoration-none">
+                                        <div class="card text-center h-100 border-warning">
+                                            <div class="card-body">
+                                                <i class="bi bi-database display-4 text-warning mb-3"></i>
+                                                <h6>Резервная копия</h6>
+                                                <p class="small text-muted mb-0">
+                                                    Создать backup базы данных
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="col-md-6">
+                                    <a href="#" class="text-decoration-none">
+                                        <div class="card text-center h-100 border-info">
+                                            <div class="card-body">
+                                                <i class="bi bi-graph-up-arrow display-4 text-info mb-3"></i>
+                                                <h6>Отчеты</h6>
+                                                <p class="small text-muted mb-0">
+                                                    Сгенерировать системные отчеты
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <div class="alert alert-warning">
+                                <h6><i class="bi bi-exclamation-triangle me-2"></i>Требуют внимания:</h6>
+                                <ul class="mb-0">
+                                    <li>3 непроверенные работы больше 3 дней</li>
+                                    <li>2 пользователя не активировали учетные записи</li>
+                                    <li>1 группа без назначенного преподавателя</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Информация о системе -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Информация о системе
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Версия системы:</strong>
+                            <div class="mb-2">EduSubmit v1.2.3</div>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>База данных:</strong>
+                            <div class="mb-2">MySQL 8.0</div>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Пользователей онлайн:</strong>
+                            <div class="mb-2">24</div>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Последний backup:</strong>
+                            <div class="mb-2">Сегодня 02:00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
+    </div>
+</div>
 
-        <!-- Последние действия -->
-        <article class="card">
-            <header>
-                <h3>Последние действия</h3>
-            </header>
-            <table role="grid">
-                <thead>
-                    <tr>
-                        <th>Пользователь</th>
-                        <th>Действие</th>
-                        <th>Время</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Иван Петров</td>
-                        <td>Сдал задание "Spring MVC"</td>
-                        <td>10 мин назад</td>
-                    </tr>
-                    <tr>
-                        <td>Мария Сидорова</td>
-                        <td>Создала новое задание</td>
-                        <td>1 час назад</td>
-                    </tr>
-                    <tr>
-                        <td>Алексей Козлов</td>
-                        <td>Оценил задание "Базы данных"</td>
-                        <td>2 часа назад</td>
-                    </tr>
-                </tbody>
-            </table>
-        </article>
-    </main>
+<!-- Футер -->
+<footer class="bg-dark text-white py-3 mt-4">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <h6><i class="bi bi-journal-bookmark-fill me-2"></i>EduSubmit Admin</h6>
+                <p class="mb-0 small text-muted">Административная панель системы</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <p class="small mb-0 text-muted">
+                    <i class="bi bi-shield-lock me-1"></i>
+                    Административный доступ |
+                    <i class="bi bi-cpu ms-2 me-1"></i>
+                    CPU: 24% | RAM: 1.2GB/4GB
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // График активности
+    const activityCtx = document.getElementById('activityChart').getContext('2d');
+    const activityChart = new Chart(activityCtx, {
+        type: 'line',
+        data: {
+            labels: ['1 Дек', '5 Дек', '10 Дек', '15 Дек', '20 Дек', '25 Дек', '30 Дек'],
+            datasets: [{
+                label: 'Сдано работ',
+                data: [12, 19, 8, 15, 22, 18, 25],
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+            }, {
+                label: 'Создано заданий',
+                data: [3, 5, 2, 6, 4, 7, 5],
+                borderColor: '#f5576c',
+                backgroundColor: 'rgba(245, 87, 108, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Количество'
+                    }
+                }
+            }
+        }
+    });
+
+    // Круговая диаграмма ролей
+    const rolesCtx = document.getElementById('rolesChart').getContext('2d');
+    const rolesChart = new Chart(rolesCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Студенты', 'Преподаватели', 'Администраторы'],
+            datasets: [{
+                data: [120, 25, 3],
+                backgroundColor: [
+                    '#667eea',
+                    '#f5576c',
+                    '#4facfe'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((value / total) * 100);
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Автообновление времени
+    function updateTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('ru-RU');
+        document.querySelectorAll('.current-time').forEach(el => {
+            el.textContent = timeString;
+        });
+    }
+
+    setInterval(updateTime, 1000);
+    updateTime();
+</script>
 </body>
 </html>

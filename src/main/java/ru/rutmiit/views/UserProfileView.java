@@ -11,8 +11,9 @@ public class UserProfileView {
     private final String fullName;
     private final String role;
     private final String registrationDate;
+    private final String group;
 
-    public UserProfileView(String username, String email, String fullName, String role, LocalDateTime registrationDate) {
+    public UserProfileView(String username, String email, String fullName, String role, LocalDateTime registrationDate, String group) {
         this.username = username;
         this.email = email;
         this.fullName = fullName;
@@ -20,5 +21,6 @@ public class UserProfileView {
         this.registrationDate = registrationDate != null
                 ? registrationDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
                 : "";
+        this.group = group;
     }
 }

@@ -4,7 +4,7 @@
     <!--    </ul>-->
     <!--    <ul>-->
     <!--        <li><a th:href="@{/}" class="contrast">Главная</a></li>-->
-    <!--        <li><a th:href="@{/assignments/all}" class="contrast">Все задания</a></li>-->
+    <!--        <li><a th:href="@{/assignments/my}" class="contrast">Все задания</a></li>-->
     <!--        <li sec:authorize="hasAnyAuthority('STUDENT', 'TEACHER', 'ADMIN')">-->
     <!--            <a th:href="@{/assignments/my}" class="contrast">Мои задания</a>-->
     <!--        </li>-->
@@ -27,7 +27,7 @@
         <ul>
             <li><a th:href="@{/}" class="contrast">🏠 Главная</a></li>
             <li sec:authorize="hasAnyAuthority('ROLE_ADMIN')">
-                <a th:href="@{/assignments/all}" class="contrast">📋 Все задания</a>
+                <a th:href="@{/assignments/my}" class="contrast">📋 Все задания</a>
             </li>
 
             <!-- Мои задания - только для авторизованных -->

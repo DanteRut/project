@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои сдачи - EduSubmit</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .submission-card {
+            transition: all 0.3s;
+            border-left: 4px solid #667eea;
+        }
+        .submission-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .submission-card.late {
+            border-left-color: #dc3545;
+        }
+        .submission-card.graded {
+            border-left-color: #28a745;
+        }
+        .submission-card.pending {
+            border-left-color: #ffc107;
+        }
+        .score-badge {
+            font-size: 1.1rem;
+            padding: 0.5rem 1rem;
+        }
+        .filter-btn.active {
+            background-color: #667eea;
+            color: white;
+        }
+        .empty-state {
+            padding: 5rem 2rem;
+            text-align: center;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .progress-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: conic-gradient(#667eea var(--progress), #e9ecef 0%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+        }
+        .progress-circle-inner {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<!-- Навигация -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold text-primary" href="/">
+            <i class="bi bi-journal-bookmark-fill me-2"></i>EduSubmit
+        </a>
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Главная</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/assignments/my">Мои задания</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/submissions/my">Мои сдачи</a>
+                </li>
+                <li th:if="${#authorization.expression('hasRole(''TEACHER'')')}">
+                    <a class="nav-link" href="/assignments/add">Создать задание</a>
+                </li>
+            </ul>
+            <div class="d-flex align-items-center">
+                    <span class="me-3 text-muted">
+                        <i class="bi bi-person-circle me-1"></i>
+                        <span th:text="${#authentication.name}"></span>
+                    </span>
+                <form th:action="@{/logout}" method="post">
+                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                        <i class="bi bi-box-arrow-right"></i> Выйти
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Основной контент -->
+<main class="container mt-4">
+    <!-- Заголовок -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i class="bi bi-list-check me-2"></i>
+                <span th:if="${isStudent}">Мои сданные работы</span>
+                <span th:if="${isTeacher}">Работы студентов</span>
+            </h2>
+            <p class="text-muted mb-0" th:if="${isStudent}">
+                История всех ваших сданных заданий
+            </p>
+            <p class="text-muted mb-0" th:if="${isTeacher}">
+                Сданные работы по вашим заданиям
+            </p>
+        </div>
+<!--        <div th:if="${isTeacher}" class="d-flex gap-2">-->
+<!--&lt;!&ndash;            <a href="#" class="btn btn-outline-warning">&ndash;&gt;-->
+<!--&lt;!&ndash;                <i class="bi bi-download me-1"></i> Экспорт&ndash;&gt;-->
+<!--&lt;!&ndash;            </a>&ndash;&gt;-->
+<!--&lt;!&ndash;            <a href="#" class="btn btn-outline-primary">&ndash;&gt;-->
+<!--&lt;!&ndash;                <i class="bi bi-funnel me-1"></i> Фильтры&ndash;&gt;-->
+<!--&lt;!&ndash;            </a>&ndash;&gt;-->
+<!--        </div>-->
+    </div>
+
+    <!-- Уведомления -->
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>
+        <span th:text="${successMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <span th:text="${errorMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Статистика -->
+<!--    <div class="row mb-4">-->
+<!--        <div class="col-md-3">-->
+<!--            <div class="card text-center">-->
+<!--                <div class="card-body">-->
+<!--                    <div class="progress-circle" style="&#45;&#45;progress: 75%">-->
+<!--                        <div class="progress-circle-inner">-->
+<!--                            75%-->
+<!--                        </div>-->
+<!--                    </div>-->
+<!--                    <h5>Общий прогресс</h5>-->
+<!--                    <p class="text-muted small">Выполнено заданий</p>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--&lt;!&ndash;        <div class="col-md-3">&ndash;&gt;-->
+<!--&lt;!&ndash;            <div class="card text-center">&ndash;&gt;-->
+<!--&lt;!&ndash;                <div class="card-body">&ndash;&gt;-->
+<!--&lt;!&ndash;                    <div class="display-4 text-success fw-bold mb-2">&ndash;&gt;-->
+<!--&lt;!&ndash;                        <i class="bi bi-check-circle"></i>&ndash;&gt;-->
+<!--&lt;!&ndash;                    </div>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <h5 th:text="${# ?: 0}">8</h5>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <p class="text-muted small">Оценено работ</p>&ndash;&gt;-->
+<!--&lt;!&ndash;                </div>&ndash;&gt;-->
+<!--&lt;!&ndash;            </div>&ndash;&gt;-->
+<!--&lt;!&ndash;        </div>&ndash;&gt;-->
+<!--&lt;!&ndash;        <div class="col-md-3">&ndash;&gt;-->
+<!--&lt;!&ndash;            <div class="card text-center">&ndash;&gt;-->
+<!--&lt;!&ndash;                <div class="card-body">&ndash;&gt;-->
+<!--&lt;!&ndash;                    <div class="display-4 text-warning fw-bold mb-2">&ndash;&gt;-->
+<!--&lt;!&ndash;                        <i class="bi bi-clock-history"></i>&ndash;&gt;-->
+<!--&lt;!&ndash;                    </div>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <h5 th:text="${#aggregates.count(submissions.?[score == null]) ?: 0}">4</h5>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <p class="text-muted small">На проверке</p>&ndash;&gt;-->
+<!--&lt;!&ndash;                </div>&ndash;&gt;-->
+<!--&lt;!&ndash;            </div>&ndash;&gt;-->
+<!--&lt;!&ndash;        </div>&ndash;&gt;-->
+<!--        <div class="col-md-3">-->
+<!--            <div class="card text-center">-->
+<!--                <div class="card-body">-->
+<!--                    <div class="display-4 text-danger fw-bold mb-2">-->
+<!--                        <i class="bi bi-exclamation-triangle"></i>-->
+<!--                    </div>-->
+<!--                    <h5 th:text="${#aggregates.count(submissions.?[isLate]) ?: 0}">2</h5>-->
+<!--                    <p class="text-muted small">С опозданием</p>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        </div>-->
+<!--    </div>-->
+
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-outline-primary filter-btn active" data-filter="all">
+                            Все
+                        </button>
+                        <button class="btn btn-outline-primary filter-btn" data-filter="graded">
+                            Оцененные
+                        </button>
+                        <button class="btn btn-outline-primary filter-btn" data-filter="pending">
+                            На проверке
+                        </button>
+                        <button class="btn btn-outline-primary filter-btn" data-filter="high">
+                            Высокий балл
+                        </button>
+                        <button class="btn btn-outline-primary filter-btn" data-filter="low">
+                            Низкий балл
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-search"></i>
+                            </span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="Поиск...">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Список сдач -->
+    <div class="row" id="submissionsContainer">
+        <div th:each="submission : ${submissions}" class="col-md-6 mb-4">
+            <div class="card submission-card h-100"
+                 th:data-status="${submission.score != null ? 'graded' : 'pending'}"
+                 th:data-late="${submission.isLate}"
+                 th:data-score="${submission.score ?: 0}"
+                 th:data-title="${submission.assignment.title.toLowerCase()}"
+                 th:data-student="${submission.student.fullName.toLowerCase()}">
+                <div class="card-body d-flex flex-column">
+                    <!-- Заголовок и статус -->
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 class="card-title mb-1" th:text="${submission.assignment.title}">
+                                Название задания
+                            </h5>
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <small class="text-muted">
+                                    <i class="bi bi-book me-1"></i>
+                                    <span th:text="${submission.assignment.subject.name}">Предмет</span>
+                                </small>
+                                <span class="text-muted">•</span>
+                                <small class="text-muted">
+                                    <i class="bi bi-people me-1"></i>
+                                    <span th:text="${submission.assignment.group}">Группа</span>
+                                </small>
+                            </div>
+                        </div>
+                        <div>
+                                <span th:if="${submission.score != null}"
+                                      class="badge bg-success score-badge">
+                                    <span th:text="${submission.score}">0</span>/
+                                    <span th:text="${submission.assignment.maxScore}">100</span>
+                                </span>
+                            <span th:if="${submission.score == null}"
+                                  class="badge bg-warning">
+                                    На проверке
+                                </span>
+                        </div>
+                    </div>
+
+                    <!-- Информация о студенте (для преподавателей) -->
+                    <div th:if="${isTeacher}" class="mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-person-circle me-2 text-primary"></i>
+                            <div>
+                                <strong th:text="${submission.student.fullName}">Студент</strong>
+                                <br>
+                                <small class="text-muted" th:text="${submission.student.email}">
+                                    email@example.com
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Детали сдачи -->
+                    <div class="mb-3">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <small class="text-muted d-block">Дата сдачи</small>
+                                <strong th:text="${#temporals.format(submission.submittedAt, 'dd.MM.yyyy HH:mm')}">
+                                    01.01.2024
+                                </strong>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Статус</small>
+                                <div>
+                                        <span th:if="${submission.isLate}" class="badge bg-danger">
+                                            Опоздание
+                                        </span>
+                                    <span th:if="${submission.score != null}" class="badge bg-success">
+                                            Оценено
+                                        </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Комментарий студента -->
+                    <div th:if="${submission.feedback.length() > 0}"
+                         class="mb-3">
+                        <small class="text-muted d-block">Комментарий студента:</small>
+                        <p class="mb-0 small" style="max-height: 60px; overflow: hidden;"
+                           th:text="${submission.feedback}">
+                            Комментарий...
+                        </p>
+                    </div>
+
+                    <!-- Прогресс оценки (для преподавателей) -->
+<!--                    <div th:if="${isTeacher && submission.score == null}"-->
+<!--                         class="mt-auto pt-3">-->
+<!--                        <div class="d-flex justify-content-between align-items-center">-->
+<!--                            <small class="text-muted">-->
+<!--                                <i class="bi bi-clock-history me-1"></i>-->
+<!--                                Ожидает проверки-->
+<!--                            </small>-->
+<!--                            <span class="badge bg-secondary">-->
+<!--                                    <span th:text="${#submission.isLate}">-->
+<!--                                        2-->
+<!--                                    </span> д.-->
+<!--                                </span>-->
+<!--                        </div>-->
+<!--                    </div>-->
+
+                    <!-- Обратная связь (для студентов) -->
+<!--                    <div th:if="${isStudent && submission.score != null}"-->
+<!--                         class="mt-auto pt-3">-->
+<!--                        <div class="alert alert-light p-2 mb-0">-->
+<!--                            <small>-->
+<!--                                <strong>Обратная связь:</strong>-->
+<!--                                <span th:if="${submission.feedback != null}" th:text="${submission.feedback}">-->
+<!--                                        Комментарий...-->
+<!--                                    </span>-->
+<!--                                <span th:if="${!submission.feedback == null}" class="text-muted">-->
+<!--                                        Без комментария-->
+<!--                                    </span>-->
+<!--                            </small>-->
+<!--                        </div>-->
+<!--                    </div>-->
+
+                    <!-- Действия -->
+                    <div class="d-grid gap-2 mt-3">
+                        <div class="btn-group" role="group">
+                            <a th:href="@{/files/{name}(name=${submission.filePath})}"
+                               target="_blank"
+                               class="btn btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a th:href="@{/files/{name}(name=${submission.filePath})}"
+                               download
+                               class="btn btn-outline-success">
+                                <i class="bi bi-download"></i>
+                            </a>
+                        </div>
+
+                        <a th:if="${isTeacher != null && submission.score == null}"
+                           th:href="@{/submissions/grade/{id}(id=${submission.id})}"
+                           class="btn btn-warning">
+                            <i class="bi bi-check-square me-1"></i> Оценить
+                        </a>
+
+                        <a th:if="${isTeacher != null && submission.score != null}"
+                           th:href="@{/submissions/grade/{id}(id=${submission.id})}"
+                           class="btn btn-outline-warning">
+                            <i class="bi bi-pencil me-1"></i> Изменить оценку
+                        </a>
+
+                        <a th:if="${isStudent}"
+                           th:href="@{/assignments/details/{id}(id=${submission.assignment.id})}"
+                           class="btn btn-outline-info">
+                            <i class="bi bi-info-circle me-1"></i> К заданию
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Пустой список -->
+    <div th:if="${submissions == null}" class="empty-state">
+        <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+        <h4>Сдачи отсутствуют</h4>
+        <p class="text-muted mb-4" th:if="${isStudent}">
+            Вы еще не сдали ни одного задания
+        </p>
+        <p class="text-muted mb-4" th:if="${isTeacher}">
+            Студенты еще не сдали работы по вашим заданиям
+        </p>
+        <a th:if="${isStudent}" href="/assignments/my" class="btn btn-primary">
+            <i class="bi bi-journal-text me-1"></i> Перейти к заданиям
+        </a>
+        <a th:if="${isTeacher}" href="/assignments/my" class="btn btn-primary">
+            <i class="bi bi-journal-text me-1"></i> Мои задания
+        </a>
+    </div>
+
+    <!-- Пагинация (если нужно) -->
+    <div th:if="${submissions != null}" class="d-flex justify-content-center mt-4">
+        <nav>
+            <ul class="pagination">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="#">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</main>
+
+<!-- Футер -->
+<footer class="bg-light mt-5 py-4 border-top">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <h6><i class="bi bi-journal-bookmark-fill me-2"></i>EduSubmit</h6>
+                <p class="mb-0 small text-muted">Система управления учебными заданиями</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <p class="small mb-0 text-muted">
+                        <span th:if="${isStudent}">
+                            <i class="bi bi-mortarboard me-1"></i>
+                            Студенческий доступ
+                        </span>
+                    <span th:if="${isTeacher}">
+                            <i class="bi bi-person-badge me-1"></i>
+                            Преподавательский доступ
+                        </span>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Фильтрация и поиск
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const searchInput = document.getElementById('searchInput');
+        const submissions = document.querySelectorAll('.submission-card');
+
+        // Фильтрация
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const filter = this.getAttribute('data-filter');
+
+                // Обновление активной кнопки
+                filterBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+
+                // Применение фильтра
+                submissions.forEach(submission => {
+                    const status = submission.getAttribute('data-status');
+                    const isLate = submission.getAttribute('data-late') === 'true';
+                    const score = parseInt(submission.getAttribute('data-score'));
+                    const maxScore = 100; // Можно получать из данных
+
+                    let shouldShow = false;
+
+                    switch(filter) {
+                        case 'all':
+                            shouldShow = true;
+                            break;
+                        case 'graded':
+                            shouldShow = status === 'graded';
+                            break;
+                        case 'pending':
+                            shouldShow = status === 'pending';
+                            break;
+                        case 'late':
+                            shouldShow = isLate;
+                            break;
+                        case 'high':
+                            shouldShow = status === 'graded' && score >= maxScore * 0.8;
+                            break;
+                        case 'low':
+                            shouldShow = status === 'graded' && score < maxScore * 0.6;
+                            break;
+                        default:
+                            shouldShow = true;
+                    }
+
+                    submission.parentElement.style.display = shouldShow ? 'block' : 'none';
+                });
+            });
+        });
+
+        // Поиск
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+
+            submissions.forEach(submission => {
+                const title = submission.getAttribute('data-title');
+                const student = submission.getAttribute('data-student') || '';
+                const matches = title.includes(searchTerm) || student.includes(searchTerm);
+
+                if (matches) {
+                    submission.parentElement.style.display = 'block';
+                } else {
+                    submission.parentElement.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>

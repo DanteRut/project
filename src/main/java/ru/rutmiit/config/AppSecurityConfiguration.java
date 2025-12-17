@@ -8,7 +8,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -41,14 +40,12 @@ public class AppSecurityConfiguration {
                         .requestMatchers("/profile").authenticated()
                         .requestMatchers("/assignments/add", "/assignments/delete")
                         .hasAnyAuthority("ROLE_TEACHER")
-                        .requestMatchers("/a/add", "/companies/company-delete/*")
-                        .hasAuthority("ROLE_ADMIN")
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
                         .loginProcessingUrl("/login")
-                        .usernameParameter("username")
+                        .usernameParameter("email")  // Изменено с username на email
                         .passwordParameter("password")
                         .defaultSuccessUrl("/", true)
                         .failureUrl("/login?error=true")

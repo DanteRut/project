@@ -17,36 +17,43 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 public class Assignment extends BaseEntity {
 
+    @ManyToOne
+    @JoinColumn(name = "subject_id", nullable = false)
+    private Subject subject;
+
+    @ManyToOne
+    @JoinColumn(name = "teacher_id", nullable = false)
+    private User teacher;
+
+    @Column(name = "group_name", nullable = false, length = 7)
+    private String group;
+
     @Column(nullable = false, length = 200)
     private String title;
 
     @Column(length = 2000)
     private String description;
 
-    @Column(length = 1000)
-    private String criteria;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     @Column(nullable = false)
     private LocalDateTime deadline;
+
+    @Column(name = "max_score")
+    private Integer maxScore;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private AssignmentStatus status = AssignmentStatus.ACTIVE;
 
-    @ManyToOne
-    @JoinColumn(name = "teacher_id", nullable = false)
-    private User teacher;
-
-    @ManyToMany
-    @JoinTable(
-            name = "assignment_students",
-            joinColumns = @JoinColumn(name = "assignment_id"),
-            inverseJoinColumns = @JoinColumn(name = "student_id")
-    )
+    @OneToMany(mappedBy = "assignment", cascade = CascadeType.ALL)
     @Builder.Default
-    private List<User> assignedStudents = new ArrayList<>();
+    @ToString.Exclude
+    private List<AssignmentFile> assignmentFiles = new ArrayList<>();
 
     @OneToMany(mappedBy = "assignment", cascade = CascadeType.ALL)
     @Builder.Default
+    @ToString.Exclude
     private List<Submission> submissions = new ArrayList<>();
 }

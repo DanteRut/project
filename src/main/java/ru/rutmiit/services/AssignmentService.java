@@ -2,114 +2,176 @@ package ru.rutmiit.services;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.modelmapper.ModelMapper;
+import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.rutmiit.dto.*;
+import org.springframework.web.multipart.MultipartFile;
+import ru.rutmiit.dto.CreateAssignmentDto;
+import ru.rutmiit.dto.ShowAssignmentDto;
+import ru.rutmiit.models.entities.*;
+import ru.rutmiit.models.enums.AssignmentStatus;
 import ru.rutmiit.models.exceptions.AssignmentNotFoundException;
-import ru.rutmiit.models.entities.Assignment;
-import ru.rutmiit.models.entities.User;
-import ru.rutmiit.repositories.AssignmentRepository;
+import ru.rutmiit.repositories.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)  // Добавьте эту аннотацию
+@Transactional(readOnly = true)
 public class AssignmentService {
 
     private final AssignmentRepository assignmentRepository;
-    private final UserService userService;
-    private final ModelMapper modelMapper;
-
-    public List<ShowAssignmentDto> getAllAssignments() {
-        return assignmentRepository.findAll().stream()
-                .map(this::convertToShowDto)
-                .collect(Collectors.toList());
-    }
-
-    public Page<ShowAssignmentDto> getAllAssignmentsPaginated(Pageable pageable) {
-        return assignmentRepository.findAll(pageable)
-                .map(this::convertToShowDto);
-    }
-
-    public List<ShowAssignmentDto> searchAssignments(String searchTerm) {
-        return assignmentRepository.findByTitleContainingIgnoreCase(searchTerm).stream()
-                .map(this::convertToShowDto)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional  // Для методов, изменяющих данные
-    public AssignmentDetailsDto getAssignmentDetails(String id) {
-        Assignment assignment = assignmentRepository.findById(id)
-                .orElseThrow(() -> new AssignmentNotFoundException(
-                        "Задание с ID '" + id + "' не найдено"));
-
-        return convertToDetailsDto(assignment);
-    }
+    private final SubjectRepository subjectRepository;
+//    private final GroupRepository groupRepository;
+    private final UserRepository userRepository;
+    private final AssignmentFileRepository assignmentFileRepository;
+    private final FileStorageService fileStorageService;
 
     @Transactional
-    public void createAssignment(CreateAssignmentDto assignmentDto, String teacherUsername) {
-        User teacher = userService.findByUsername(teacherUsername)
+    public Assignment createAssignment(CreateAssignmentDto dto, String teacherUsername) {
+        User teacher = userRepository.findByUsername(teacherUsername)
                 .orElseThrow(() -> new IllegalArgumentException("Преподаватель не найден"));
 
-        Assignment assignment = modelMapper.map(assignmentDto, Assignment.class);
-        assignment.setTeacher(teacher);
+        if (!teacher.isTeacher()) {
+            throw new IllegalArgumentException("Только преподаватели могут создавать задания");
+        }
 
-        // Назначаем студентов
-        List<User> students = userService.findAllByIds(assignmentDto.getStudentIds());
-        assignment.setAssignedStudents(students);
+        Subject subject = subjectRepository.findById(dto.getSubjectId())
+                .orElseThrow(() -> new IllegalArgumentException("Предмет не найден"));
 
-        assignmentRepository.save(assignment);
-        log.info("Создано новое задание: '{}' преподавателем: {}",
-                assignment.getTitle(), teacher.getFullName());
+//        String group = assignmentRepository.findByGroup(dto.getGroup())
+//                .orElseThrow(() -> new IllegalArgumentException("Группа не найдена"));
+
+        Assignment assignment = Assignment.builder()
+                .subject(subject)
+                .teacher(teacher)
+                .group(dto.getGroup())
+                .title(dto.getTitle())
+                .description(dto.getDescription())
+                .createdAt(LocalDateTime.now())
+                .deadline(dto.getDeadline())
+                .maxScore(dto.getMaxScore())
+                .status(AssignmentStatus.ACTIVE)
+                .build();
+
+        Assignment savedAssignment = assignmentRepository.save(assignment);
+        log.info("Создано задание: '{}' для группы {}", dto.getTitle(), dto.getGroup());
+
+        // Сохраняем файлы задания
+        if (dto.getFiles() != null) {
+            for (MultipartFile file : dto.getFiles()) {
+                if (!file.isEmpty()) {
+                    try {
+                        String storedFileName = fileStorageService.storeFile(file);
+
+                        AssignmentFile assignmentFile = AssignmentFile.builder()
+                                .assignment(savedAssignment)
+                                .filePath(storedFileName)
+                                .fileName(file.getOriginalFilename())
+                                .build();
+
+                        assignmentFileRepository.save(assignmentFile);
+                        log.info("Файл задания сохранен: {}", file.getOriginalFilename());
+                    } catch (Exception e) {
+                        log.error("Ошибка при сохранении файла задания: {}", file.getOriginalFilename(), e);
+                    }
+                }
+            }
+        }
+
+        return savedAssignment;
+    }
+
+    public Assignment getAssignmentById(String id) {
+        Assignment assignment = assignmentRepository.findById(id)
+                .orElseThrow(() -> new AssignmentNotFoundException("Задание не найдено"));
+
+        // Инициализируем ленивые коллекции
+        Hibernate.initialize(assignment.getAssignmentFiles());
+        Hibernate.initialize(assignment.getSubmissions());
+
+        // Если нужно инициализировать вложенные объекты
+        if (assignment.getSubmissions() != null) {
+            for (Submission submission : assignment.getSubmissions()) {
+                Hibernate.initialize(submission.getStudent());
+            }
+        }
+
+        return assignment;
+//        return assignmentRepository.findById(id)
+//                .orElseThrow(() -> new AssignmentNotFoundException("Задание не найдено"));
+    }
+
+    public List<Assignment> getAssignmentsForGroup(String group) {
+//        String group = groupRepository.findById(group)
+//                .orElseThrow(() -> new IllegalArgumentException("Группа не найдена"));
+//        return assignmentRepository.findByGroup(group);
+        return assignmentRepository.findBygroup(group);
+    }
+
+    public List<Assignment> getAssignmentsForStudent(User student) {
+        if (student.getGroup() == null) {
+            throw new IllegalArgumentException("Студент не принадлежит к группе");
+        }
+        return assignmentRepository.findBygroup(student.getGroup());
+    }
+
+    public List<Assignment> getAssignmentsForTeacher(User teacher) {
+        return assignmentRepository.findByTeacher(teacher);
     }
 
     @Transactional
     public void deleteAssignment(String id) {
-        Assignment assignment = assignmentRepository.findById(id)
-                .orElseThrow(() -> new AssignmentNotFoundException(
-                        "Задание с ID '" + id + "' не найдено"));
+        Assignment assignment = getAssignmentById(id);
+
+        // Удаляем файлы задания
+        for (AssignmentFile file : assignment.getAssignmentFiles()) {
+            fileStorageService.deleteFile(file.getFilePath());
+        }
 
         assignmentRepository.delete(assignment);
-        log.info("Удалено задание: '{}'", assignment.getTitle());
+        log.info("Удалено задание: {}", assignment.getTitle());
     }
 
-    public Page<ShowAssignmentDto> getAssignmentsForStudent(String studentUsername, Pageable pageable) {
-        User student = userService.findByUsername(studentUsername)
-                .orElseThrow(() -> new IllegalArgumentException("Студент не найден"));
-
-        return assignmentRepository.findByAssignedStudentsContaining(student, pageable)
-                .map(this::convertToShowDto);
+    public List<Assignment> findExpiredAssignments() {
+        return assignmentRepository.findExpiredAssignments(LocalDateTime.now());
     }
 
-    private ShowAssignmentDto convertToShowDto(Assignment assignment) {
-        ShowAssignmentDto dto = modelMapper.map(assignment, ShowAssignmentDto.class);
+    @Transactional
+    public void markAssignmentAsExpired(String id) {
+        Assignment assignment = getAssignmentById(id);
+        if (assignment.getStatus() == AssignmentStatus.ACTIVE &&
+                assignment.getDeadline().isBefore(LocalDateTime.now())) {
+            assignment.setStatus(AssignmentStatus.EXPIRED);
+            assignmentRepository.save(assignment);
+        }
+    }
+
+    public Page<Assignment> getAllAssignmentsPaginated(Pageable pageable) {
+        return assignmentRepository.findAll(pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public ShowAssignmentDto convertToShowDto(Assignment assignment) {
+        ShowAssignmentDto dto = new ShowAssignmentDto();
+        dto.setId(assignment.getId());
+        dto.setTitle(assignment.getTitle());
+        dto.setDescription(assignment.getDescription());
+        dto.setDeadline(assignment.getDeadline());
+        dto.setStatus(assignment.getStatus().toString());
         dto.setTeacherName(assignment.getTeacher().getFullName());
-        dto.setStudentCount(assignment.getAssignedStudents().size());  // Тут нужна открытая сессия!
-        return dto;
-    }
 
-    private AssignmentDetailsDto convertToDetailsDto(Assignment assignment) {
-        AssignmentDetailsDto dto = modelMapper.map(assignment, AssignmentDetailsDto.class);
-        dto.setTeacherName(assignment.getTeacher().getFullName());
+        // УБРАТЬ или закомментировать строку ниже
+        // dto.setStudentCount(assignment.getGroup().getStudents().size());
 
-        // Конвертируем студентов
-        List<StudentInfoDto> studentDtos = assignment.getAssignedStudents().stream()
-                .map(student -> {
-                    StudentInfoDto studentDto = new StudentInfoDto();
-                    studentDto.setId(student.getId());
-                    studentDto.setFullName(student.getFullName());
-                    studentDto.setUsername(student.getUsername());
-                    return studentDto;
-                })
-                .collect(Collectors.toList());
+        // Вместо этого можно просто поставить 0 или получить через отдельный запрос
+        dto.setStudentCount(0);
 
-        dto.setAssignedStudents(studentDtos);
         return dto;
     }
 }

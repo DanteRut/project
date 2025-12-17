@@ -31,7 +31,7 @@ public class UserService {
     }
 
     @Transactional
-    public User registerUser(String username, String password, String email, String fullName, UserRole role) {
+    public User registerUser(String username, String password, String email, String fullName, UserRole role, String group) {
         if (userRepository.existsByUsername(username)) {
             throw new IllegalArgumentException("Пользователь с таким логином уже существует");
         }
@@ -46,6 +46,7 @@ public class UserService {
                 .email(email)
                 .fullName(fullName)
                 .role(role)
+                .group(group)
                 .build();
 
         return userRepository.save(user);
@@ -57,5 +58,9 @@ public class UserService {
 
     public long countByRole(UserRole role) {
         return userRepository.countByRole(role);
+    }
+
+    public List<String> findGroups(){
+        return userRepository.findDistinctGroups();
     }
 }

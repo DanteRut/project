@@ -20,23 +20,22 @@ public class AppUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        log.info("Попытка загрузки пользователя: {}", username);
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        log.info("Попытка загрузки пользователя по email: {}", email);
 
-        return userRepository.findByUsername(username)
+        return userRepository.findByEmail(email)
                 .map(u -> {
-                    log.info("Пользователь найден в БД: {}", u.getUsername());
-                    log.info("Хеш пароля в БД: {}", u.getPassword());
+                    log.info("Пользователь найден в БД: {}", u.getEmail());
                     log.info("Роль пользователя: {}", u.getRole());
 
                     return new User(
-                            u.getUsername(),
+                            u.getEmail(),
                             u.getPassword(),
                             List.of(new SimpleGrantedAuthority("ROLE_" + u.getRole().name()))
                     );
                 }).orElseThrow(() -> {
-                    log.error("Пользователь не найден: {}", username);
-                    return new UsernameNotFoundException(username + " was not found!");
+                    log.error("Пользователь не найден: {}", email);
+                    return new UsernameNotFoundException(email + " was not found!");
                 });
     }
 }

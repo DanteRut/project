@@ -1,19 +1,20 @@
 package ru.rutmiit.web;
 
 import jakarta.validation.Valid;
-import org.springframework.validation.BindingResult;
-import org.springframework.validation.FieldError;
-import org.springframework.web.multipart.MultipartFile;
-import ru.rutmiit.dto.SubmitAssignmentDto;
-import ru.rutmiit.services.FileStorageService;
-import ru.rutmiit.services.SubmissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import ru.rutmiit.dto.GradeSubmissionDto;
 import ru.rutmiit.dto.SubmitAssignmentDto;
+import ru.rutmiit.models.entities.Assignment;
+import ru.rutmiit.models.entities.User;
+import ru.rutmiit.services.AssignmentService;
+import ru.rutmiit.services.SubmissionService;
+import ru.rutmiit.services.UserService;
 
 import java.security.Principal;
 
@@ -22,77 +23,137 @@ import java.security.Principal;
 @RequestMapping("/submissions")
 @RequiredArgsConstructor
 public class SubmissionController {
-    
+
     private final SubmissionService submissionService;
-    private final FileStorageService fileStorageService;
-    
-    // Форма сдачи задания
+    private final AssignmentService assignmentService;
+    private final UserService userService;
+
     @GetMapping("/submit/{assignmentId}")
-    public String showSubmitForm(@PathVariable("assignmentId") String assignmentId,
-                                Model model,
-                                Principal principal) {
-        log.debug("Отображение формы сдачи задания: {}", assignmentId);
-        
+    public String showSubmitForm(@PathVariable String assignmentId,
+                                 Principal principal,
+                                 Model model) {
+        log.debug("Форма сдачи задания: {}", assignmentId);
+
         try {
-            Object assignmentInfo = submissionService.getAssignmentForSubmission(assignmentId, principal.getName());
-            model.addAttribute("assignment", assignmentInfo);
+            Assignment assignment = assignmentService.getAssignmentById(assignmentId);
+            User student = userService.findByUsername(principal.getName())
+                    .orElseThrow(() -> new IllegalArgumentException("Студент не найден"));
+
+            // Проверяем доступ
+            if (!student.isStudent() || !assignment.getGroup().equals(student.getGroup())) {
+                return "redirect:/access-denied";
+            }
+
+            model.addAttribute("assignment", assignment);
             model.addAttribute("submissionModel", new SubmitAssignmentDto());
             return "submission-submit";
         } catch (Exception e) {
-            model.addAttribute("errorMessage", e.getMessage());
+            log.error("Ошибка при отображении формы сдачи", e);
+            model.addAttribute("errorMessage", "Задание не найдено");
             return "redirect:/assignments/my";
         }
     }
-    
-    // Обработка сдачи задания
+
     @PostMapping("/submit/{assignmentId}")
-    public String submitAssignment(
-            @PathVariable String assignmentId,
-            @Valid SubmitAssignmentDto submitDto,
-            BindingResult bindingResult,
-            @RequestParam(value = "attachment", required = false) MultipartFile file, // Добавьте этот параметр
-            Principal principal,
-            RedirectAttributes redirectAttributes,
-            Model model) {
+    public String submitAssignment(@PathVariable String assignmentId,
+                                   @Valid @ModelAttribute("submissionModel") SubmitAssignmentDto dto,
+                                   BindingResult bindingResult,
+                                   Principal principal,
+                                   RedirectAttributes redirectAttributes) {
+        log.debug("Сдача задания: {}", assignmentId);
 
         if (bindingResult.hasErrors()) {
-            log.error("Ошибки валидации при сдаче задания: {}", bindingResult.getAllErrors());
-            bindingResult.getAllErrors().forEach(error ->
-                    log.error("Поле: {}, Ошибка: {}",
-                            ((FieldError) error).getField(), error.getDefaultMessage()));
+            log.warn("Ошибки валидации при сдаче задания");
+            redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.submissionDto", bindingResult);
+            redirectAttributes.addFlashAttribute("submissionDto", dto);
             return "redirect:/submissions/submit/" + assignmentId;
         }
 
-        // Сохраните файл
-        if (file != null && !file.isEmpty()) {
-            String fileUrl = fileStorageService.storeFile(file);
-            submitDto.setAttachmentUrl(fileUrl);
-        }
         try {
-            submissionService.submitAssignment(assignmentId, principal.getName(), submitDto);
-            redirectAttributes.addFlashAttribute("successMessage", 
-                "Задание успешно сдано!");
+            submissionService.submitAssignment(assignmentId, principal.getName(), dto);
+            redirectAttributes.addFlashAttribute("successMessage", "Задание успешно сдано!");
+            return "redirect:/assignments/my";
         } catch (Exception e) {
             log.error("Ошибка при сдаче задания", e);
-            redirectAttributes.addFlashAttribute("errorMessage", 
-                "Ошибка при сдаче задания: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", "Ошибка при сдаче: " + e.getMessage());
+            return "redirect:/submissions/submit/" + assignmentId;
         }
-        
-        return "redirect:/assignments/my";
     }
-    
-    // Просмотр оценок
-    @GetMapping("/grades")
-    public String viewGrades(Principal principal, Model model) {
-        log.debug("Отображение оценок студента: {}", principal.getName());
-        
+
+    @GetMapping("/grade/{submissionId}")
+    public String showGradeForm(@PathVariable String submissionId,
+                                Principal principal,
+                                Model model) {
+        log.debug("Форма оценки: {}", submissionId);
+
         try {
-            Object grades = submissionService.getStudentGrades(principal.getName());
-            model.addAttribute("grades", grades);
-            return "submission-grades";
+            ru.rutmiit.models.entities.Submission submission = submissionService.getSubmissionById(submissionId);
+            User teacher = userService.findByUsername(principal.getName())
+                    .orElseThrow(() -> new IllegalArgumentException("Преподаватель не найден"));
+
+            // Проверяем права
+            if (!teacher.isTeacher() || !submission.getAssignment().getTeacher().getId().equals(teacher.getId())) {
+                return "redirect:/access-denied";
+            }
+
+            model.addAttribute("submission", submission);
+            model.addAttribute("gradeDto", new GradeSubmissionDto());
+            return "submission-grade";
         } catch (Exception e) {
-            model.addAttribute("errorMessage", "Ошибка при загрузке оценок");
+            log.error("Ошибка при отображении формы оценки", e);
+            model.addAttribute("errorMessage", "Сдача не найдена");
             return "redirect:/assignments/my";
+        }
+    }
+
+    @PostMapping("/grade/{submissionId}")
+    public String gradeSubmission(@PathVariable String submissionId,
+                                  @Valid @ModelAttribute("gradeDto") GradeSubmissionDto dto,
+                                  BindingResult bindingResult,
+                                  Principal principal,
+                                  RedirectAttributes redirectAttributes) {
+        log.debug("Оценка сдачи: {}", submissionId);
+
+        if (bindingResult.hasErrors()) {
+            log.warn("Ошибки валидации при оценке");
+            redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.gradeDto", bindingResult);
+            redirectAttributes.addFlashAttribute("gradeDto", dto);
+            return "redirect:/submissions/grade/" + submissionId;
+        }
+
+        try {
+            submissionService.gradeSubmission(submissionId, principal.getName(), dto);
+            redirectAttributes.addFlashAttribute("successMessage", "Оценка выставлена!");
+            return "redirect:/assignments/details/" +
+                    submissionService.getSubmissionById(submissionId).getAssignment().getId();
+        } catch (Exception e) {
+            log.error("Ошибка при оценке", e);
+            redirectAttributes.addFlashAttribute("errorMessage", "Ошибка при оценке: " + e.getMessage());
+            return "redirect:/submissions/grade/" + submissionId;
+        }
+    }
+
+    @GetMapping("/my")
+    public String showMySubmissions(Principal principal, Model model) {
+        log.debug("Мои сдачи: {}", principal.getName());
+
+        try {
+            User user = userService.findByUsername(principal.getName())
+                    .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+
+            if (user.isStudent()) {
+                model.addAttribute("submissions", submissionService.getStudentSubmissions(user.getUsername()));
+                model.addAttribute("isStudent", true);
+            } else if (user.isTeacher()) {
+                model.addAttribute("submissions", submissionService.getTeacherSubmissions(user.getUsername()));
+                model.addAttribute("isTeacher", true);
+            }
+
+            return "submission-list";
+        } catch (Exception e) {
+            log.error("Ошибка при получении списка сдач", e);
+            model.addAttribute("errorMessage", "Ошибка при загрузке данных");
+            return "redirect:/";
         }
     }
 }

@@ -4,112 +4,127 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import ru.rutmiit.dto.GradeSubmissionDto;
 import ru.rutmiit.dto.SubmitAssignmentDto;
-import ru.rutmiit.models.entities.Assignment;
-import ru.rutmiit.models.entities.Submission;
-import ru.rutmiit.models.entities.User;
-import ru.rutmiit.models.enums.SubmissionStatus;
+import ru.rutmiit.models.entities.*;
 import ru.rutmiit.models.exceptions.AssignmentNotFoundException;
 import ru.rutmiit.repositories.AssignmentRepository;
 import ru.rutmiit.repositories.SubmissionRepository;
+import ru.rutmiit.repositories.UserRepository;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class SubmissionService {
-    
+
     private final SubmissionRepository submissionRepository;
     private final AssignmentRepository assignmentRepository;
-    private final UserService userService;
-    
+    private final UserRepository userRepository;
+    private final FileStorageService fileStorageService;
+
     @Transactional
-    public void submitAssignment(String assignmentId, String studentUsername, SubmitAssignmentDto submissionDto) {
+    public Submission submitAssignment(String assignmentId, String studentUsername, SubmitAssignmentDto dto) {
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new AssignmentNotFoundException("Задание не найдено"));
-        
-        User student = userService.findByUsername(studentUsername)
+
+        User student = userRepository.findByUsername(studentUsername)
                 .orElseThrow(() -> new IllegalArgumentException("Студент не найден"));
-        
-        // Проверяем, назначено ли задание студенту
-        if (!assignment.getAssignedStudents().contains(student)) {
-            throw new IllegalArgumentException("Это задание не назначено вам");
+
+        // Проверяем, что студент в нужной группе
+        if (!assignment.getGroup().equals(student.getGroup())) {
+            throw new IllegalArgumentException("Это задание не для вашей группы");
         }
-        
+
+        // Проверяем, что задание еще не сдано
+        submissionRepository.findByAssignmentAndStudent(assignment, student)
+                .ifPresent(s -> {
+                    throw new IllegalArgumentException("Вы уже сдали это задание");
+                });
+
         // Проверяем дедлайн
-        SubmissionStatus status = LocalDateTime.now().isAfter(assignment.getDeadline())
-            ? SubmissionStatus.LATE 
-            : SubmissionStatus.SUBMITTED;
-        
+        boolean isLate = LocalDateTime.now().isAfter(assignment.getDeadline());
+
+        // Сохраняем файл
+        MultipartFile file = dto.getFile();
+        String storedFileName = fileStorageService.storeFile(file);
+
         Submission submission = Submission.builder()
                 .assignment(assignment)
                 .student(student)
-                .solutionText(submissionDto.getSolutionText())
-                .comment(submissionDto.getComment())
-                .attachmentUrl(submissionDto.getAttachmentUrl())
-                .status(status)
+                .filePath(storedFileName)
+                .submittedAt(LocalDateTime.now())
+                .isLate(isLate)
+                .feedback(dto.getComment())
                 .build();
-        
-        submissionRepository.save(submission);
+
+        Submission savedSubmission = submissionRepository.save(submission);
         log.info("Студент {} сдал задание: {}", studentUsername, assignment.getTitle());
+
+        return savedSubmission;
     }
-    
+
     @Transactional
-    public void gradeSubmission(String submissionId, GradeSubmissionDto gradeDto) {
+    public Submission gradeSubmission(String submissionId, String teacherUsername, GradeSubmissionDto dto) {
         Submission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new IllegalArgumentException("Сдача не найдена"));
-        
-        submission.setGrade(gradeDto.getGrade());
-        submission.setTeacherComment(gradeDto.getTeacherComment());
-        submission.setStatus(SubmissionStatus.GRADED);
+
+        User teacher = userRepository.findByUsername(teacherUsername)
+                .orElseThrow(() -> new IllegalArgumentException("Преподаватель не найден"));
+
+        // Проверяем, что преподаватель является автором задания
+        if (!submission.getAssignment().getTeacher().getId().equals(teacher.getId())) {
+            throw new IllegalArgumentException("Вы не можете оценивать это задание");
+        }
+
+        // Проверяем, что оценка не превышает максимальный балл
+        if (dto.getScore() > submission.getAssignment().getMaxScore()) {
+            throw new IllegalArgumentException(
+                    String.format("Оценка не может превышать %d баллов",
+                            submission.getAssignment().getMaxScore())
+            );
+        }
+
+        submission.setScore(dto.getScore());
+        submission.setFeedback(dto.getFeedback());
+        submission.setGradedBy(teacher);
         submission.setGradedAt(LocalDateTime.now());
-        
-        submissionRepository.save(submission);
-        log.info("Оценено задание ID: {}, оценка: {}", submissionId, gradeDto.getGrade());
+
+        Submission savedSubmission = submissionRepository.save(submission);
+        log.info("Оценено задание ID: {}, оценка: {}", submissionId, dto.getScore());
+
+        return savedSubmission;
     }
-    
-    public Object getAssignmentForSubmission(String assignmentId, String studentUsername) {
+
+    public List<Submission> getSubmissionsForAssignment(String assignmentId) {
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new AssignmentNotFoundException("Задание не найдено"));
-        
-        Map<String, Object> result = new HashMap<>();
-        result.put("id", assignment.getId());
-        result.put("title", assignment.getTitle());
-        result.put("description", assignment.getDescription());
-        result.put("criteria", assignment.getCriteria());
-        result.put("deadline", assignment.getDeadline());
-        
-        return result;
+        return submissionRepository.findByAssignment(assignment);
     }
-    
-    public Object getStudentGrades(String studentUsername) {
-        User student = userService.findByUsername(studentUsername)
+
+    public List<Submission> getStudentSubmissions(String studentUsername) {
+        User student = userRepository.findByUsername(studentUsername)
                 .orElseThrow(() -> new IllegalArgumentException("Студент не найден"));
-        
-        List<Submission> submissions = submissionRepository.findByStudent(student);
-        
-        Map<String, Object> result = new HashMap<>();
-        result.put("totalAssignments", submissions.size());
-        
-        long completed = submissions.stream()
-                .filter(s -> s.getGrade() != null)
-                .count();
-        result.put("completedAssignments", completed);
-        
-        double average = submissions.stream()
-                .filter(s -> s.getGrade() != null)
-                .mapToInt(Submission::getGrade)
-                .average()
-                .orElse(0.0);
-        result.put("averageGrade", String.format("%.1f", average));
-        
-        result.put("submissions", submissions);
-        
-        return result;
+        return submissionRepository.findByStudent(student);
+    }
+
+    public List<Submission> getTeacherSubmissions(String teacherUsername) {
+        User teacher = userRepository.findByUsername(teacherUsername)
+                .orElseThrow(() -> new IllegalArgumentException("Преподаватель не найден"));
+        return submissionRepository.findByTeacher(teacher);
+    }
+
+    public List<Submission> getUncheckedSubmissionsForTeacher(String teacherUsername) {
+        User teacher = userRepository.findByUsername(teacherUsername)
+                .orElseThrow(() -> new IllegalArgumentException("Преподаватель не найден"));
+        return submissionRepository.findUncheckedByTeacher(teacher);
+    }
+
+    public ru.rutmiit.models.entities.Submission getSubmissionById(String id) {
+        return submissionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Сдача не найдена"));
     }
 }
