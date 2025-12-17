@@ -12,9 +12,9 @@ import ru.rutmiit.dto.GradeSubmissionDto;
 import ru.rutmiit.dto.SubmitAssignmentDto;
 import ru.rutmiit.models.entities.Assignment;
 import ru.rutmiit.models.entities.User;
-import ru.rutmiit.services.AssignmentService;
-import ru.rutmiit.services.SubmissionService;
-import ru.rutmiit.services.UserService;
+import ru.rutmiit.services.AssignmentServiceImpl;
+import ru.rutmiit.services.SubmissionServiceImpl;
+import ru.rutmiit.services.UserServiceImpl;
 
 import java.security.Principal;
 
@@ -24,9 +24,9 @@ import java.security.Principal;
 @RequiredArgsConstructor
 public class SubmissionController {
 
-    private final SubmissionService submissionService;
-    private final AssignmentService assignmentService;
-    private final UserService userService;
+    private final SubmissionServiceImpl submissionServiceImpl;
+    private final AssignmentServiceImpl assignmentServiceImpl;
+    private final UserServiceImpl userServiceImpl;
 
     @GetMapping("/submit/{assignmentId}")
     public String showSubmitForm(@PathVariable String assignmentId,
@@ -35,8 +35,8 @@ public class SubmissionController {
         log.debug("Форма сдачи задания: {}", assignmentId);
 
         try {
-            Assignment assignment = assignmentService.getAssignmentById(assignmentId);
-            User student = userService.findByUsername(principal.getName())
+            Assignment assignment = assignmentServiceImpl.getAssignmentById(assignmentId);
+            User student = userServiceImpl.findByUsername(principal.getName())
                     .orElseThrow(() -> new IllegalArgumentException("Студент не найден"));
 
             // Проверяем доступ
@@ -70,7 +70,7 @@ public class SubmissionController {
         }
 
         try {
-            submissionService.submitAssignment(assignmentId, principal.getName(), dto);
+            submissionServiceImpl.submitAssignment(assignmentId, principal.getName(), dto);
             redirectAttributes.addFlashAttribute("successMessage", "Задание успешно сдано!");
             return "redirect:/assignments/my";
         } catch (Exception e) {
@@ -87,8 +87,8 @@ public class SubmissionController {
         log.debug("Форма оценки: {}", submissionId);
 
         try {
-            ru.rutmiit.models.entities.Submission submission = submissionService.getSubmissionById(submissionId);
-            User teacher = userService.findByUsername(principal.getName())
+            ru.rutmiit.models.entities.Submission submission = submissionServiceImpl.getSubmissionById(submissionId);
+            User teacher = userServiceImpl.findByUsername(principal.getName())
                     .orElseThrow(() -> new IllegalArgumentException("Преподаватель не найден"));
 
             // Проверяем права
@@ -122,10 +122,10 @@ public class SubmissionController {
         }
 
         try {
-            submissionService.gradeSubmission(submissionId, principal.getName(), dto);
+            submissionServiceImpl.gradeSubmission(submissionId, principal.getName(), dto);
             redirectAttributes.addFlashAttribute("successMessage", "Оценка выставлена!");
             return "redirect:/assignments/details/" +
-                    submissionService.getSubmissionById(submissionId).getAssignment().getId();
+                    submissionServiceImpl.getSubmissionById(submissionId).getAssignment().getId();
         } catch (Exception e) {
             log.error("Ошибка при оценке", e);
             redirectAttributes.addFlashAttribute("errorMessage", "Ошибка при оценке: " + e.getMessage());
@@ -138,14 +138,14 @@ public class SubmissionController {
         log.debug("Мои сдачи: {}", principal.getName());
 
         try {
-            User user = userService.findByUsername(principal.getName())
+            User user = userServiceImpl.findByUsername(principal.getName())
                     .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
             if (user.isStudent()) {
-                model.addAttribute("submissions", submissionService.getStudentSubmissions(user.getUsername()));
+                model.addAttribute("submissions", submissionServiceImpl.getStudentSubmissions(user.getUsername()));
                 model.addAttribute("isStudent", true);
             } else if (user.isTeacher()) {
-                model.addAttribute("submissions", submissionService.getTeacherSubmissions(user.getUsername()));
+                model.addAttribute("submissions", submissionServiceImpl.getTeacherSubmissions(user.getUsername()));
                 model.addAttribute("isTeacher", true);
             }
 
